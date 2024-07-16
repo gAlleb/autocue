@@ -327,7 +327,7 @@ def check_autocue_setup(~shutdown=false, ~print=false) =
     # use our values in any case
     settings.autocue.amplify_behavior := "keep"
     # avoid dead air from reconcile, reset default 3.0s to our fade_out duration
-    settings.autocue.target_cross_duration := settings.autocue.cue_file.fade_out()
+    #settings.autocue.target_cross_duration := settings.autocue.cue_file.fade_out()
     # Let user know what version (s)he is running
     log(level=2, label="autocue.cue_file",
       'You are using autocue.cue_file version \
@@ -337,11 +337,11 @@ def check_autocue_setup(~shutdown=false, ~print=false) =
       'The external "#{settings.autocue.cue_file.path()}" \
        is version #{settings.autocue.cue_file.version_external()}'
     )
-    log(level=2, label="autocue.cue_file",
-      'Setting `settings.autocue.target_cross_duration` to \
-       #{settings.autocue.cue_file.fade_out()} s, from \
-       `settings.autocue.cue_file.fade_out`.'
-    )
+    #log(level=2, label="autocue.cue_file",
+    #  'Setting `settings.autocue.target_cross_duration` to \
+    #   #{settings.autocue.cue_file.fade_out()} s, from \
+    #   `settings.autocue.cue_file.fade_out`.'
+    #)
     if print then
       stdlib_print(
         'You are using autocue.cue_file version \
@@ -351,11 +351,11 @@ def check_autocue_setup(~shutdown=false, ~print=false) =
         'The external "#{settings.autocue.cue_file.path()}" \
          is version #{settings.autocue.cue_file.version_external()}'
       )
-      stdlib_print(
-        'Setting `settings.autocue.target_cross_duration` to \
-         #{settings.autocue.cue_file.fade_out()} s, from \
-         `settings.autocue.cue_file.fade_out`.'
-      )
+     # stdlib_print(
+     #   'Setting `settings.autocue.target_cross_duration` to \
+     #    #{settings.autocue.cue_file.fade_out()} s, from \
+     #    `settings.autocue.cue_file.fade_out`.'
+     # )
     end
     true
   else
@@ -987,7 +987,7 @@ settings.autocue.preferred := "cue_file"
 # use our values in any case
 settings.autocue.amplify_behavior := "keep"
 # avoid dead air from reconcile, reset default 3.0s to our fade_out duration
-settings.autocue.target_cross_duration := settings.autocue.cue_file.fade_out()
+#settings.autocue.target_cross_duration := settings.autocue.cue_file.fade_out()
 autocue.register(name="cue_file", cue_file)
 
 # --- Copy-paste Azuracast LS Config, second input box END ---
