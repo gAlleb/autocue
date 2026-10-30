@@ -1,3 +1,112 @@
+# Autocue — Liquidsoap 2.5 branch
+
+This is the `ls-2.5.0` branch maintained by **Stefan (gAlleb)**, based on
+the original Autocue by **Matthias C. Hormann (Moonbase59)** and its contributors.
+The original README is preserved verbatim below under
+[Original upstream README](#original-upstream-readme). Its compatibility
+warnings, personal notes and installation instructions describe the original
+upstream release. Start with this section for the changes in this branch.
+
+## Using this branch
+
+Use both updated files from this branch:
+
+- [`cue_file`](cue_file): the external Python analyzer and file tag reader/writer.
+- [`autocue.cue_file.liq`](autocue.cue_file.liq): the Liquidsoap integration.
+
+Python 3 and FFmpeg with `ebur128` are required. Mutagen is recommended and is
+needed for writing some supported formats. This branch has been tested on
+Liquidsoap **2.5.0+git@cb8ba5d** and **2.4.5** in Linux containers. For 2.5,
+use a build containing the upstream autocue/cross fixes
+[#5587](https://github.com/savonet/liquidsoap/pull/5587) and
+[#5589](https://github.com/savonet/liquidsoap/pull/5589).
+
+The historical AzuraCast installation snippets below have not been validated
+for this branch. Test the integration with the Liquidsoap version used by your
+installation before applying them.
+
+## Custom file tags for new libraries
+
+Liquidsoap uses `liq_*` as working metadata. New libraries should use a
+separate file tag namespace. Choose a prefix when tagging, for example:
+
+```sh
+python3 ./cue_file --tag-prefix ac_ -kwnrf "/path/to/track.flac"
+```
+
+Use the matching setting in Liquidsoap:
+
+```liquidsoap
+%include "/path/to/autocue.cue_file.liq"
+settings.autocue.cue_file.tag_prefix := "ac_"
+enable_autocue_metadata()
+```
+
+This stores and reads `ac_cue_in`, `ac_cue_out`, `ac_cross_start_next`, etc.
+Other prefixes are supported: letters, digits, underscores, dots and hyphens,
+starting with a letter or underscore. Prefixes are lowercased; a trailing
+underscore is not added automatically.
+
+Only known autocue file tag names are translated. Internal JSON, the record
+returned to Liquidsoap, request annotations and the resulting `liq_*` control
+metadata keep their existing contract. ReplayGain/R128 names are unchanged.
+An incomplete custom tag set is not silently completed from legacy `liq_*`
+measurements. Writing tags preserves unrelated tags and other namespaces;
+it does not migrate or delete them. Liquidsoap can still read any legacy
+`liq_*` controls present in a file directly, so avoid conflicting legacy
+controls in new custom-tag libraries.
+
+`-f` forces analysis; omit it to reuse complete existing tags. `-w` enables
+writing; omit it to read without modifying the file. Selecting a prefix does
+not enable writing by itself.
+
+## Existing libraries remain compatible
+
+The default prefix remains **`liq_`**. Existing libraries and tagging commands
+continue to work without re-tagging or new mandatory tags. This includes
+Stefan's existing legacy-tagged library. For an explicit legacy setting:
+
+```liquidsoap
+settings.autocue.cue_file.tag_prefix := "liq_"
+```
+
+Custom-prefix support is an opt-in file storage feature. It does not change
+the cue-point analysis or fade reconciliation rules. It also does not add a
+new fast path bypassing the external Python process.
+
+## Analysis diagnostics
+
+The Python JSON response includes optional runtime `analysis` information:
+whether audio was analyzed, and why. The integration logs either
+`Using existing tags; audio analysis skipped` or `Full audio analysis performed`,
+with a reason such as `--force`, changed `blankskip`, or missing tags.
+This diagnostic information is not written to audio file tags. Older CLI
+responses without it remain readable; the integration reports that the status
+is unavailable rather than guessing.
+
+## Changes maintained by Stefan (gAlleb)
+
+- **2026-09-16:** removed the forced `target_cross_duration` assignment and
+  updated nullable values to `null` in the Liquidsoap integration.
+- **2026-10-30:** updated JSON object creation for Liquidsoap 2.5; added
+  analysis diagnostics and configurable file tag prefixes, documentation and
+  automated tests. Legacy tag values and playback behavior are preserved.
+
+Seven black-box tests cover file round-trips in MP3, FLAC and M4A/ALAC,
+legacy compatibility, mixed namespaces, request/JSON overrides and audio
+preservation. Run them with FFmpeg, Mutagen and optionally Liquidsoap installed:
+
+```sh
+python3 -m unittest discover -s tests -v
+```
+
+See [CHANGELOG.md](CHANGELOG.md) and the dated source comments for details.
+The upstream author credits and history are retained.
+
+---
+
+## Original upstream README
+
 # <a name="autocue"></a>autocue <a href="#toc" class="goToc">⇧</a>
 
 **If you like what you got, please consider to [![Donate with Paypal](https://www.paypalobjects.com/en_US/i/btn/btn_donate_LG.gif)](https://www.paypal.com/donate/?hosted_button_id=PBPR63362LDEU). Thank you! ❤️**
@@ -138,7 +247,6 @@ Here is a complete list you can copy, showing the default settings:
 
 ```
 # settings.autocue.cue_file.path := "cue_file"
-# settings.autocue.cue_file.tag_prefix := "liq_"  # legacy default; see custom prefixes below
 # settings.autocue.cue_file.fade_in := 0.1  # seconds
 # settings.autocue.cue_file.fade_out := 2.5  # seconds
 # settings.autocue.cue_file.timeout := 60.0  # seconds
@@ -265,7 +373,6 @@ Here is a **reference table** for settings and parameters in `cue_file` (the ext
 |--------|----------|-------|----|
 |`-h`, `--help`|—|—|show help|
 |`-V`, `--version`|—|—|show version|
-|`--tag-prefix`|`settings.autocue.cue_file.tag_prefix`|`liq_`|File tag namespace; use e.g. `ac_` for new libraries|
 |`-t`, `--target`|`settings.autocue.cue_file.target`|-18.0|LUFS|
 |`-s`, `--silence`|`settings.autocue.cue_file.silence`|-42.0|LU|
 |`-o`, `--overlay`|`settings.autocue.cue_file.overlay`|-8.0|LU|
@@ -293,46 +400,6 @@ Here is a **reference table** for settings and parameters in `cue_file` (the ext
 
 
 ## <a name="tags-and-metadata-reference"></a>Tags and metadata reference <a href="#toc" class="goToc">⇧</a>
-
-### Custom file tag prefixes
-
-For new libraries, use your own file tag namespace rather than Liquidsoap's
-reserved `liq_` names. For example:
-
-```sh
-cue_file --tag-prefix ac_ -kwnrf "/path/to/track.flac"
-```
-
-Configure the matching reader in Liquidsoap:
-
-```liquidsoap
-settings.autocue.cue_file.tag_prefix := "ac_"
-```
-
-This writes and reads `ac_cue_in`, `ac_cue_out`, `ac_cross_start_next`, etc.
-The prefix is lowercased and must start with a letter or underscore, followed
-by letters, digits, underscores, dots or hyphens. No trailing underscore is
-added automatically. ReplayGain/R128 tags keep their standard names.
-The JSON protocol, internal fields and Liquidsoap request annotations retain
-their canonical `liq_*` names; only file tag names change. Normal Liquidsoap
-annotation behavior, including annotations which disable autocue, is unchanged.
-
-Both components must support `--tag-prefix` to use a custom namespace.
-The default is still `liq_` for compatibility with existing libraries and
-tagging commands: no re-tagging or new mandatory tags are required. With the
-default prefix, the integration also works with older external `cue_file`
-versions because it does not send the new CLI option.
-
-When a custom namespace is selected, missing autocue fields are not filled
-from legacy `liq_*` tags. An incomplete selected set follows the existing
-analysis rules. `-w` writes only the selected namespace and preserves other
-tags; it does not migrate or delete old namespaces. Liquidsoap can still
-recognize legacy `liq_*` tags directly, so avoid storing conflicting legacy
-controls alongside custom tags in new libraries.
-
-`-f` in the example forces analysis. Omit it to reuse complete existing tags;
-omit `-w` to read without writing. Changing the prefix never enables writing
-on its own. Unknown tags with the chosen prefix are not treated as autocue data.
 
 ### <a name="categories"></a>Categories <a href="#toc" class="goToc">⇧</a>
 

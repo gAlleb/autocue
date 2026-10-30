@@ -1,6 +1,9 @@
 # autocue changelog
 
-### Unreleased
+### 2026-10-30 — Stefan (gAlleb), Liquidsoap 2.5 branch
+
+- Update the Liquidsoap JSON object API and add explicit analysis diagnostics.
+- Preserve the upstream README verbatim beneath a current branch guide.
 
 - Add `--tag-prefix` and `settings.autocue.cue_file.tag_prefix` for custom
   file tags. New libraries can use a namespace such as `ac_`; the legacy
