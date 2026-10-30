@@ -25,6 +25,112 @@ The historical AzuraCast installation snippets below have not been validated
 for this branch. Test the integration with the Liquidsoap version used by your
 installation before applying them.
 
+## Applying the crossfade
+
+Enabling autocue prepares metadata; a transition operator still needs to apply
+the fades and overlap. The examples below assume `radio` is your existing
+source and this adapter has been included and selected. Choose one transition
+and apply `cross` once.
+
+### Custom transition with linear fades
+
+This is the transition used by the maintained radio stack, expressed with a
+direct `delay` argument instead of copying the delay into incoming metadata:
+
+```liquidsoap
+def cue_file_transition(ending, starting) =
+    add(normalize=false, [
+        fade.in(
+            type="lin",
+            delay=float_of_string(
+                default=0.0,
+                ending.metadata["liq_fade_out_start_next"]
+            ),
+            initial_metadata=starting.metadata,
+            duration=settings.autocue.cue_file.fade_in(),
+            starting.source
+        ),
+        fade.out(
+            type="lin",
+            initial_metadata=ending.metadata,
+            duration=settings.autocue.cue_file.fade_out(),
+            ending.source
+        )
+    ])
+end
+
+radio = cross(
+    duration=settings.autocue.cue_file.fade_out(),
+    cue_file_transition,
+    radio
+)
+```
+
+The ending track determines when the next track should enter. `cross` provides
+the adjusted `liq_fade_out_start_next`; the `delay` argument passes it to the
+incoming fade. An explicit `liq_fade_in_delay` in `starting.metadata` overrides
+that argument. A missing delay defaults to zero. The fade duration settings
+are also defaults: valid per-track fade metadata takes precedence.
+
+### Standard `cross.simple` transition
+
+The standard helper performs the delay coordination itself:
+
+```liquidsoap
+def cue_file_transition(ending, starting) =
+    cross.simple(
+        ending.source,
+        starting.source,
+        fade_in=settings.autocue.cue_file.fade_in(),
+        fade_out=settings.autocue.cue_file.fade_out(),
+        initial_fade_in_metadata=starting.metadata,
+        initial_fade_out_metadata=ending.metadata
+    )
+end
+
+radio = cross(
+    duration=settings.autocue.cue_file.fade_out(),
+    cue_file_transition,
+    radio
+)
+```
+
+In the tested versions, `cross.simple` selects sinusoidal fades by default.
+It also aligns the incoming buffer when it is shorter than the outgoing one.
+It is a working alternative, but its default fade shape differs from the
+linear custom transition above. To request linear fades, replace its two
+initial-metadata arguments with:
+
+```liquidsoap
+initial_fade_in_metadata=[
+    ("liq_fade_in_type", "lin"),
+    ...list.assoc.remove("liq_fade_in_type", starting.metadata)
+],
+initial_fade_out_metadata=[
+    ("liq_fade_out_type", "lin"),
+    ...list.assoc.remove("liq_fade_out_type", ending.metadata)
+]
+```
+
+This explicitly forces the two fade types. Global `settings.fade.*.type`
+alone does not change the sinusoidal defaults selected inside `cross.simple`.
+Both examples retain this project's external autocue provider.
+
+These transitions were compared by rendering synthetic tagged MP3 files and
+explicit transition cases on Liquidsoap 2.4.5 and 2.5.0+git@cb8ba5d with 20 ms
+frames. The five-file playlist was rendered in real time. Cases also included
+a five-second jingle, zero/short fade-outs, long fade-ins, delayed next-track
+entry and an explicit incoming delay. The direct-delay custom transition
+matched the existing metadata-copy version byte for byte. In those cases,
+`cross.simple` with linear fade metadata also matched the custom transition;
+its default sinusoidal version produced different samples during fades.
+This is a finite test set, not a guarantee for every buffer arrangement.
+
+For AzuraCast, retain its separate transition-to-live branch and use the chosen
+transition for ordinary tracks. Replace the existing crossfade application;
+do not add another `cross` after it. Full live connection/disconnection behavior
+has not been tested by these standalone render comparisons.
+
 ## Custom file tags for new libraries
 
 Liquidsoap uses `liq_*` as working metadata. New libraries should use a
@@ -114,6 +220,8 @@ is unavailable rather than guessing.
   automated tests. Legacy tag values and playback behavior are preserved.
 - **2026-10-30:** fixed duplicate gain export and preservation of explicit
   file gain in `keep` mode; removed the fade-out warning for exact fits.
+- **2026-10-30:** documented the custom linear transition and `cross.simple`
+  alternative after comparing their rendered PCM on Liquidsoap 2.4.5 and 2.5.
 
 Eight black-box tests cover file round-trips in MP3, FLAC and M4A/ALAC,
 legacy compatibility, mixed namespaces, request/JSON overrides and audio
