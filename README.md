@@ -1,7 +1,7 @@
-# Autocue 5.0.0
+# autocue 5.0.0
 
 This fork is maintained by **Stefan (gAlleb)**, based on
-the original Autocue by **Matthias C. Hormann (Moonbase59)** and its contributors.
+the original autocue by **Matthias C. Hormann (Moonbase59)** and its contributors.
 Development continues on `main`; use the `v5.0.0` tag for this release.
 The `master` branch preserves the original upstream state, and `ls-2.5.0`
 retains the earlier maintained branch.
