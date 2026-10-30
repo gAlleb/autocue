@@ -13,6 +13,7 @@ upstream release. Start with this section for the changes in this branch.
 - [Applying the crossfade](#applying-the-crossfade)
   - [Custom transition with linear fades](#custom-transition-with-linear-fades)
   - [Standard `cross.simple` transition](#standard-crosssimple-transition)
+- [Optional fade-out extension](#optional-fade-out-extension)
 - [Custom file tags for new libraries](#custom-file-tags-for-new-libraries)
 - [Existing libraries remain compatible](#existing-libraries-remain-compatible)
 - [Gain priority](#gain-priority)
@@ -143,6 +144,52 @@ transition for ordinary tracks. Replace the existing crossfade application;
 do not add another `cross` after it. Full live connection/disconnection behavior
 has not been tested by these standalone render comparisons.
 
+## Optional fade-out extension
+
+By default, when `start_next` leaves more time before `cue_out` than the
+requested fade-out, the adapter shortens `cue_out` to `start_next + fade_out`.
+The optional extension mode can preserve the full ending instead:
+
+```liquidsoap
+# Set these after including autocue.cue_file.liq.
+settings.autocue.cue_file.extend_fade_out := true
+settings.autocue.cue_file.fade_out_extension_threshold := 1.6
+settings.autocue.cue_file.fade_out_extension_max := 15.0
+```
+
+Extension is **off by default**. With it enabled, a positive fade-out is
+extended to `cue_out - start_next` when both conditions hold:
+
+- The available tail exceeds the requested fade-out by at least the threshold
+  (1.6 seconds by default; zero or a positive value is allowed).
+- The full available tail is no longer than the maximum (15 seconds by
+  default; must be positive).
+
+For example, with `start_next=95`, `cue_out=100` and a requested fade-out of
+2.5 seconds, the default behavior moves `cue_out` to 97.5. Extension preserves
+the original `cue_out=100` and uses a five-second fade-out. The next track
+still enters at the same `start_next=95`.
+
+A tail exceeding the maximum uses the original shortening rule; the adapter
+does not introduce a delayed fade or move `start_next` to fit the maximum.
+A tail below the extension threshold also uses the original rule. Short tails
+still shorten the fade-out as before, and an explicit zero fade-out remains
+zero. When enabled, this policy can extend a positive per-track fade-out as
+well as the configured default. It applies equally to legacy and custom file
+tag prefixes and requires no re-tagging. The Python analyzer is unchanged.
+
+The threshold controls a musical policy rather than an engine requirement.
+Compare real endings before enabling it for a station. Earlier `start_next`
+adjustments from the historical AzuraCast configuration are a separate policy
+and are not part of this option.
+
+Docker checks on Liquidsoap 2.4.5 and 2.5 cover the threshold and maximum
+boundaries, unchanged cue-in/start-next, zero and short fade-outs, and invalid
+settings. A/B renders of three tagged musical endings additionally verified
+that the disabled mode preserves the previous PCM byte for byte. Enabling
+extension preserved entry timing and the full cue-out; the examples used
+tails of 5.9, 6.0 and 10.7 seconds with the same stored gain in both versions.
+
 ## Custom file tags for new libraries
 
 Liquidsoap uses `liq_*` as working metadata. New libraries should use a
@@ -234,10 +281,13 @@ is unavailable rather than guessing.
   file gain in `keep` mode; removed the fade-out warning for exact fits.
 - **2026-10-30:** documented the custom linear transition and `cross.simple`
   alternative after comparing their rendered PCM on Liquidsoap 2.4.5 and 2.5.
+- **2026-10-30:** added optional fade-out extension with a configurable extra-tail
+  threshold and maximum eligible tail; the default remains disabled.
 
-Eight black-box tests cover file round-trips in MP3, FLAC and M4A/ALAC,
+Nine black-box tests cover file round-trips in MP3, FLAC and M4A/ALAC,
 legacy compatibility, mixed namespaces, request/JSON overrides and audio
-preservation, and gain priority with conflicting file tags and annotations.
+preservation, gain priority with conflicting file tags and annotations,
+and fade-out extension boundaries and cue-point preservation.
 Run them with FFmpeg, Mutagen and optionally Liquidsoap installed:
 
 ```sh

@@ -141,6 +141,76 @@ class TagPrefixTests(unittest.TestCase):
             self.assertIn(prefix + "cue_in", self.tags(path))
 
     @unittest.skipUnless(shutil.which("liquidsoap"), "Liquidsoap is not installed")
+    def test_liquidsoap_tail_extension(self):
+        adapter = Path(os.environ.get(
+            "AUTOCUE_LIQ", Path(__file__).resolve().parents[1] / "autocue.cue_file.liq"))
+        wrapper = self.root / "tail-reader"
+        wrapper.write_text("#!/bin/sh\nexec " + shlex.quote(sys.executable) + " "
+                           + shlex.quote(str(CUE_FILE)) + ' "$@"\n')
+        wrapper.chmod(0o755)
+        # enabled, threshold, maximum, requested fade, start_next, expected fade/cue-out
+        cases = [
+            (False, 1.6, 15., 2.5, 6., 2.5, 8.5),
+            (True, 1.6, 15., 2.5, 6., 5., 11.),
+            (True, 1.6, 15., 2.5, 6.9, 4.1, 11.),
+            (True, 1.6, 15., 2.5, 6.901, 2.5, 9.401),
+            (True, 1.6, 15., 2.5, 6.899, 4.101, 11.),
+            (True, 3., 15., 2.5, 6., 2.5, 8.5),
+            (True, 0., 15., 2.5, 8., 3., 11.),
+            (True, 1.6, 4., 2.5, 6., 2.5, 8.5),
+            (True, 1.6, 5., 2.5, 6., 5., 11.),
+            (True, 1.6, 5., 2.5, 5.999, 2.5, 8.499),
+            (True, 1.6, 15., 2.5, 8.5, 2.5, 11.),
+            (True, 1.6, 15., 2.5, 9.5, 1.5, 11.),
+            (True, 1.6, 15., 0., 6., 0., 6.),
+        ]
+        def literal(v):
+            return str(v).lower() if isinstance(v, bool) else str(float(v))
+        entries = ",\n".join("(" + ",".join(map(literal, row)) + ")" for row in cases)
+        script = self.root / "tail.liq"
+        script.write_text(f'''settings.log.stdout := true
+settings.log.level := 3
+%include {json.dumps(str(adapter))}
+settings.autocue.cue_file.path := {json.dumps(str(wrapper))}
+if settings.autocue.cue_file.extend_fade_out() then error.raise(error.invalid,"Extension must default to off") end
+list.iter(fun (entry) -> begin
+  let (enabled, threshold, maximum, fade, start_next, expected_fade, expected_end) = entry
+  settings.autocue.cue_file.extend_fade_out := enabled
+  settings.autocue.cue_file.fade_out_extension_threshold := threshold
+  settings.autocue.cue_file.fade_out_extension_max := maximum
+  data=null.get(cue_file(request_metadata=[("liq_cue_in","0.5"),("liq_cue_out","11.0"),("liq_cross_start_next",string(start_next)),("liq_fade_out",string(fade))],file_metadata=[],{json.dumps(str(self.files['flac', 'liq_']))}))
+  def close(a,b) = abs(a-b) < 0.00001 end
+  if not close(data.fade_out,expected_fade) or not close(data.cue_out,expected_end) or not close(data.start_next,start_next) or data.cue_in != 0.5 then
+    error.raise(error.invalid,"Wrong tail reconciliation: " ^ string(entry) ^ " got=" ^ string(data))
+  end
+  # Diagnostic cue duration is serialized with two decimal places.
+  if abs(float_of_string(data.extra_metadata["liq_cue_duration"])-(expected_end-0.5)) > 0.00501 then
+    error.raise(error.invalid,"Cue duration was not updated")
+  end
+end, [{entries}])
+settings.autocue.cue_file.extend_fade_out := true
+settings.autocue.cue_file.fade_out_extension_threshold := -1.0
+rejected=try
+  ignore(cue_file(request_metadata=[],file_metadata=[],{json.dumps(str(self.files['flac', 'liq_']))}))
+  false
+catch _ do true end
+if not rejected then error.raise(error.invalid,"Negative threshold accepted") end
+settings.autocue.cue_file.fade_out_extension_threshold := 1.6
+settings.autocue.cue_file.fade_out_extension_max := 0.0
+rejected=try
+  ignore(cue_file(request_metadata=[],file_metadata=[],{json.dumps(str(self.files['flac', 'liq_']))}))
+  false
+catch _ do true end
+if not rejected then error.raise(error.invalid,"Non-positive maximum accepted") end
+print("TAIL_EXTENSION_TEST_PASSED")
+output.dummy(blank())
+thread.run(delay=0.1, fun () -> shutdown())
+''')
+        p = subprocess.run(["liquidsoap", str(script)], capture_output=True, text=True)
+        self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+        self.assertIn("TAIL_EXTENSION_TEST_PASSED", p.stdout)
+
+    @unittest.skipUnless(shutil.which("liquidsoap"), "Liquidsoap is not installed")
     def test_liquidsoap_amplify_policy(self):
         adapter = Path(os.environ.get(
             "AUTOCUE_LIQ", Path(__file__).resolve().parents[1] / "autocue.cue_file.liq"))
