@@ -30,6 +30,7 @@ upstream release. Start with the sections below for the maintained version.
 
 - [Key changes in 5.0.0](#key-changes-in-500)
 - [Using this release](#using-this-release)
+- [FFmpeg paths and manual diagnostics](#ffmpeg-paths-and-manual-diagnostics)
 - [Applying the crossfade](#applying-the-crossfade)
   - [Existing `add` transition with metadata delay](#existing-add-transition-with-metadata-delay)
   - [Custom transition with linear fades](#custom-transition-with-linear-fades)
@@ -71,6 +72,57 @@ use a build containing the upstream autocue/cross fixes
 The historical AzuraCast installation snippets below have not been validated
 for this release. Test the integration with the Liquidsoap version used by your
 installation before applying them.
+
+## FFmpeg paths and manual diagnostics
+
+On `main` after `v5.0.0`, both executable names can be configured. Defaults
+remain `ffmpeg` and `ffprobe`, resolved through `PATH`:
+
+```liquidsoap
+settings.autocue.cue_file.ffmpeg := "/opt/ffmpeg/bin/ffmpeg"
+settings.autocue.cue_file.ffprobe := "/opt/ffmpeg/bin/ffprobe"
+```
+
+The standalone CLI accepts the same choices:
+
+```sh
+cue_file --ffmpeg /opt/ffmpeg/bin/ffmpeg \
+    --ffprobe /opt/ffmpeg/bin/ffprobe -kwnrf track.flac
+```
+
+The selected FFprobe reads file tags and duration. The selected FFmpeg
+performs audio analysis and writes tags in formats using the FFmpeg writer;
+formats written through Mutagen continue to use Mutagen. Paths with spaces
+are supported; quote them in shell commands. A configured path is used as
+given, with no fallback to a different executable. Existing tagged files
+still skip analysis and do not need FFmpeg just to read their tags.
+
+Dependency diagnostics are **manual only**. Including the adapter and
+processing a track do not run availability/version probes. To request one:
+
+```sh
+cue_file --diagnose --ffmpeg /opt/ffmpeg/bin/ffmpeg \
+    --ffprobe /opt/ffmpeg/bin/ffprobe
+```
+
+This prints JSON with each configured path, version, success flag and error.
+It returns status 0 if both tools respond successfully to `-version`, or 1
+on failure; each tool has a five-second probe timeout. It needs no audio file
+and does not analyze or write one. It checks that the executables respond,
+not whether a particular codec or analysis filter is supported.
+
+To check the configured paths from Liquidsoap, explicitly call:
+
+```liquidsoap
+ignore(diagnose_cue_file(print=true))
+```
+
+This also checks the CLI's major version against the adapter and returns a
+boolean without changing the preferred provider, gain policy or metadata
+priority. It is separate from `check_autocue_setup()`, whose successful
+explicit call applies provider settings. Both helpers remain uncalled in
+the maintained configuration and example templates. Default paths, `liq_`
+tags, JSON values and the tagging algorithm retain their previous behavior.
 
 ## Applying the crossfade
 
@@ -427,6 +479,9 @@ is unavailable rather than guessing.
 
 ## Changes maintained by Stefan (gAlleb)
 
+- **2026-10-30 — after 5.0.0:** added configurable FFmpeg/FFprobe paths for
+  reading, analysis and tag writing, plus explicit CLI/adapter dependency
+  diagnostics. Defaults remain unchanged and diagnostics are not automatic.
 - **2026-10-30 — after 5.0.0:** repaired the optional setup helper, including
   numeric major-version compatibility, failed CLI probes and executable paths
   containing spaces. Its call remains disabled in configurations and examples.
@@ -457,6 +512,9 @@ fade-out extension boundaries and cue-point preservation, and JSON/file flag
 priority on cached and analyzed paths and through the Liquidsoap adapter.
 They also exercise five prefixes through the real request resolver, with
 JSON enabled and disabled, and inspect the actual JSON exchanged with Python.
+Tool-path tests exercise custom executable paths, all three file formats,
+missing tools and failed/timed-out manual probes, and ensure normal processing
+does not run diagnostic probes or silently use other executables.
 An additional 28 real-time renders on both engine versions compared three
 musical transition pairs with the previous code, default `liq_` and custom
 file tags. Piano transitions additionally covered a complete annotation/JSON

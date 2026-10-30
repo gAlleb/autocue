@@ -1,4 +1,5 @@
 # minimal_example_autocue.cue_file.liq
+# 2026-10-30 - Stefan (gAlleb): Document optional tool paths and manual diagnostics.
 # 2026-10-30 - Stefan (gAlleb): Keep the optional legacy setup check disabled.
 # 2024-04-09 - Moonbase59
 # 2024-04-19 - Moonbase59 - renamed to "minimal_example_autocue.cue_file.liq"
@@ -11,6 +12,10 @@
 
 # Your special non-default settings go here
 # settings.autocue.cue_file.path := "cue_file"
+# settings.autocue.cue_file.ffmpeg := "/opt/ffmpeg/bin/ffmpeg"
+# settings.autocue.cue_file.ffprobe := "/opt/ffmpeg/bin/ffprobe"
+# Manual diagnostics only (not needed to activate autocue):
+# ignore(diagnose_cue_file(print=true))
 # For new files tagged with: cue_file --tag-prefix ac_ -kwnrf track.flac
 # settings.autocue.cue_file.tag_prefix := "ac_"
 # settings.autocue.cue_file.fade_in := 0.1

@@ -2,6 +2,11 @@
 
 ### Unreleased
 
+- Add `--ffmpeg`/`--ffprobe` and matching Liquidsoap settings, used for tag
+  reading, analysis and FFmpeg-based tag writing. Preserve default PATH lookup
+  and the existing Mutagen writer behavior.
+- Add explicit `--diagnose` and `diagnose_cue_file()` availability/version
+  diagnostics without automatic startup probes or provider-setting changes.
 - Repair the optional setup helper using the compatibility approach from
   Toots' PR #38: parse numeric release components and accept equal major
   versions instead of requiring an exact version match.

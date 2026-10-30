@@ -1,4 +1,5 @@
 # test_autocue.cue_file.liq
+# 2026-10-30 - Stefan (gAlleb): Document optional tool paths and manual diagnostics.
 # 2026-10-30 - Stefan (gAlleb): Keep the optional legacy setup check disabled.
 # 2024-04-02 - Moonbase59
 # 2024-04-19 - Moonbase59 - rename to "test_autocue.cue_file.liq"
@@ -32,6 +33,10 @@ to_live = ref(false)
 # --- Copy-paste your settings into AzuraCast, second input box AFTER above file ---
 
 # settings.autocue.cue_file.path := "cue_file"
+# settings.autocue.cue_file.ffmpeg := "/opt/ffmpeg/bin/ffmpeg"
+# settings.autocue.cue_file.ffprobe := "/opt/ffmpeg/bin/ffprobe"
+# Manual diagnostics only (not needed to activate autocue):
+# ignore(diagnose_cue_file(print=true))
 # settings.autocue.cue_file.fade_in := 0.1
 # settings.autocue.cue_file.fade_out := 2.5
 settings.autocue.cue_file.timeout := 120.0
