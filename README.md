@@ -63,8 +63,8 @@ not enable writing by itself.
 ## Existing libraries remain compatible
 
 The default prefix remains **`liq_`**. Existing libraries and tagging commands
-continue to work without re-tagging or new mandatory tags. This includes
-Stefan's existing legacy-tagged library. For an explicit legacy setting:
+continue to work without re-tagging or new mandatory tags. For an explicit
+legacy setting:
 
 ```liquidsoap
 settings.autocue.cue_file.tag_prefix := "liq_"
