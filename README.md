@@ -1,8 +1,8 @@
-# autocue 5.0.0
+# autocue 5.0.1
 
 This fork is maintained by **Stefan (gAlleb)**, based on
 the original autocue by **Matthias C. Hormann (Moonbase59)** and its contributors.
-Development continues on `main`; use the `v5.0.0` tag for this release.
+Development continues on `main`; use the `v5.0.1` tag for this release.
 The `master` branch preserves the original upstream state, and `ls-2.5.0`
 retains the earlier maintained branch.
 The original README is preserved verbatim below under
@@ -10,7 +10,21 @@ The original README is preserved verbatim below under
 warnings, personal notes and installation instructions describe the original
 upstream release. Start with the sections below for the maintained version.
 
-## Key changes in 5.0.0
+## What's new in 5.0.1
+
+- **Configurable FFmpeg and FFprobe paths** in the CLI and Liquidsoap settings,
+  used consistently for reading, analysis and FFmpeg-based tag writing.
+- **Manual dependency diagnostics** via `cue_file --diagnose` and
+  `diagnose_cue_file()`, without automatic startup probes or provider changes.
+- **Repaired optional setup helper** with numeric major-version compatibility
+  and clear failure handling. Its call remains disabled by default.
+- **Updated crossfade documentation**, keeping metadata-delay `add`,
+  direct-delay `add` and `cross.simple` examples together.
+
+Existing `liq_` libraries and default tool paths remain compatible; no
+re-tagging is required. Both maintained components report `5.0.1`.
+
+## Key changes introduced in 5.0.0
 
 - **Liquidsoap 2.5 support**, tested alongside 2.4.5, with updated JSON handling
   and examples for custom crossfades and `cross.simple`.
@@ -28,7 +42,8 @@ upstream release. Start with the sections below for the maintained version.
 
 ## Contents
 
-- [Key changes in 5.0.0](#key-changes-in-500)
+- [What's new in 5.0.1](#whats-new-in-501)
+- [Key changes introduced in 5.0.0](#key-changes-introduced-in-500)
 - [Using this release](#using-this-release)
 - [FFmpeg paths and manual diagnostics](#ffmpeg-paths-and-manual-diagnostics)
 - [Applying the crossfade](#applying-the-crossfade)
@@ -50,14 +65,14 @@ Install or update both components from the same release:
 - [`cue_file`](cue_file): the external Python analyzer and file tag reader/writer.
 - [`autocue.cue_file.liq`](autocue.cue_file.liq): the Liquidsoap integration.
 
-`cue_file --version` reports `5.0.0`. The optional `check_autocue_setup()`
+`cue_file --version` reports `5.0.1`. The optional `check_autocue_setup()`
 helper remains disabled in the maintained setup and example templates.
 The adapter initializes its settings when included and does not require a
 startup probe.
 
-On `main` after `v5.0.0`, the helper's version parser is repaired, following
+In `5.0.1`, the helper's version parser is repaired, following
 [Toots' PR #38](https://github.com/Moonbase59/autocue/pull/38). An explicit call
-accepts matching numeric major versions (for example, adapter 5.0.0 and CLI
+accepts matching numeric major versions (for example, adapter 5.0.1 and CLI
 5.1.2). Different majors, missing or failed executables, and unreadable
 versions return `false`; `shutdown=true` requests exit code 2 on failure.
 The published `v5.0.0` tag retains the earlier checker limitation.
@@ -75,7 +90,7 @@ installation before applying them.
 
 ## FFmpeg paths and manual diagnostics
 
-On `main` after `v5.0.0`, both executable names can be configured. Defaults
+In `5.0.1`, both executable names can be configured. Defaults
 remain `ffmpeg` and `ffprobe`, resolved through `PATH`:
 
 ```liquidsoap
@@ -479,10 +494,10 @@ is unavailable rather than guessing.
 
 ## Changes maintained by Stefan (gAlleb)
 
-- **2026-10-30 — after 5.0.0:** added configurable FFmpeg/FFprobe paths for
+- **2026-10-30 — 5.0.1:** added configurable FFmpeg/FFprobe paths for
   reading, analysis and tag writing, plus explicit CLI/adapter dependency
   diagnostics. Defaults remain unchanged and diagnostics are not automatic.
-- **2026-10-30 — after 5.0.0:** repaired the optional setup helper, including
+- **2026-10-30 — 5.0.1:** repaired the optional setup helper, including
   numeric major-version compatibility, failed CLI probes and executable paths
   containing spaces. Its call remains disabled in configurations and examples.
 - **2026-10-30 — 5.0.0:** established `main` as the development branch and

@@ -109,7 +109,10 @@ if null.defined(semver(null)?.major) then error.raise(error.invalid,"Null versio
                 for adapter, output, compatible, normalized in matrix]
         # A failing process must be rejected even if it prints a valid version.
         rows.append(("5.0.0", self.cli(code=3), False, "(unknown)"))
-        rows.append(("5.0.0", self.cli(real=True), True, "5.0.0"))
+        real_version = subprocess.check_output(
+            [sys.executable, str(CUE_FILE), "--version"], text=True
+        ).splitlines()[0].split()[-1]
+        rows.append(("5.0.0", self.cli(real=True), True, real_version))
         entries = ",\n".join("(" + ",".join(json.dumps(v) for v in row) + ")"
                              for row in rows)
         p = self.run_liquidsoap(f'''

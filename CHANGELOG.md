@@ -1,6 +1,6 @@
 # autocue changelog
 
-### Unreleased
+### 2026-10-30 — v5.0.1, maintained by Stefan (gAlleb)
 
 - Add `--ffmpeg`/`--ffprobe` and matching Liquidsoap settings, used for tag
   reading, analysis and FFmpeg-based tag writing. Preserve default PATH lookup
@@ -15,6 +15,11 @@
   the analyzer invocation.
 - Keep the check disabled in the maintained setup and example templates;
   explicit calls and `shutdown=true` are covered by regression tests.
+- Document all three crossfade examples: metadata-delay `add`, direct-delay
+  `add`, and `cross.simple`. Use lowercase `autocue` in maintained text.
+- Validate with 24 tests on each of Liquidsoap 2.4.5 and 2.5, plus legacy
+  CLI and tag-writing comparisons. Keep existing `liq_` tags, default tool
+  paths, audio analysis and tagging behavior compatible; no re-tagging needed.
 
 ### 2026-10-30 — v5.0.0, maintained by Stefan (gAlleb)
 
