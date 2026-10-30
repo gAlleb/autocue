@@ -1,5 +1,16 @@
 # autocue changelog
 
+### Unreleased
+
+- Repair the optional setup helper using the compatibility approach from
+  Toots' PR #38: parse numeric release components and accept equal major
+  versions instead of requiring an exact version match.
+- Return failure for malformed/unknown versions, missing or non-executable
+  CLIs and nonzero exit status. Quote executable paths consistently with
+  the analyzer invocation.
+- Keep the check disabled in the maintained setup and example templates;
+  explicit calls and `shutdown=true` are covered by regression tests.
+
 ### 2026-10-30 — v5.0.0, maintained by Stefan (gAlleb)
 
 - Establish `main` as the maintained development branch and version both

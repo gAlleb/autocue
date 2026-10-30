@@ -49,11 +49,17 @@ Install or update both components from the same release:
 - [`cue_file`](cue_file): the external Python analyzer and file tag reader/writer.
 - [`autocue.cue_file.liq`](autocue.cue_file.liq): the Liquidsoap integration.
 
-`cue_file --version` reports `5.0.0`. Keep the optional legacy
-`check_autocue_setup()` helper disabled: its version-parsing expression is
-incompatible with the regex engine in the tested builds. The adapter
-initializes its settings when included and does not require that helper.
-The example templates leave its call commented out.
+`cue_file --version` reports `5.0.0`. The optional `check_autocue_setup()`
+helper remains disabled in the maintained setup and example templates.
+The adapter initializes its settings when included and does not require a
+startup probe.
+
+On `main` after `v5.0.0`, the helper's version parser is repaired, following
+[Toots' PR #38](https://github.com/Moonbase59/autocue/pull/38). An explicit call
+accepts matching numeric major versions (for example, adapter 5.0.0 and CLI
+5.1.2). Different majors, missing or failed executables, and unreadable
+versions return `false`; `shutdown=true` requests exit code 2 on failure.
+The published `v5.0.0` tag retains the earlier checker limitation.
 
 Python 3 and FFmpeg with `ebur128` are required. Mutagen is recommended and is
 needed for writing some supported formats. This release has been tested on
@@ -421,6 +427,9 @@ is unavailable rather than guessing.
 
 ## Changes maintained by Stefan (gAlleb)
 
+- **2026-10-30 — after 5.0.0:** repaired the optional setup helper, including
+  numeric major-version compatibility, failed CLI probes and executable paths
+  containing spaces. Its call remains disabled in configurations and examples.
 - **2026-10-30 — 5.0.0:** established `main` as the development branch and
   versioned both maintained components as 5.0.0. Custom-prefix JSON follows
   the selected namespace; the default `liq_` interface remains compatible.

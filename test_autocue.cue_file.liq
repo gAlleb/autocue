@@ -51,8 +51,8 @@ settings.autocue.cue_file.nice := true  # Linux/MacOS only!
 # settings.autocue.cue_file.use_json_metadata := true  # pass metadata to `cue_file` as JSON
 
 # Use cue_file and the adapter from the same release. The adapter initializes
-# itself on include. The optional legacy checker has an incompatible version
-# regex in the tested builds; leave it disabled (see README).
+# itself on include. The optional checker is available for explicit major-version
+# checks, but remains disabled in the maintained setup (see README).
 # ignore(check_autocue_setup(shutdown=true, print=true))
 
 # `enable_autocue_metadata()` will autocue ALL files Liquidsoap processes.
