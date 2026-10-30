@@ -141,6 +141,56 @@ class TagPrefixTests(unittest.TestCase):
             self.assertIn(prefix + "cue_in", self.tags(path))
 
     @unittest.skipUnless(shutil.which("liquidsoap"), "Liquidsoap is not installed")
+    def test_liquidsoap_amplify_policy(self):
+        adapter = Path(os.environ.get(
+            "AUTOCUE_LIQ", Path(__file__).resolve().parents[1] / "autocue.cue_file.liq"))
+        wrapper = self.root / "gain-reader"
+        wrapper.write_text("#!/bin/sh\nexec " + shlex.quote(sys.executable) + " "
+                           + shlex.quote(str(CUE_FILE)) + ' "$@"\n')
+        wrapper.chmod(0o755)
+        cases = []
+        for prefix in ["liq_", "ac_"]:
+            normal = self.files["flac", prefix]
+            calculated = self.cli(normal, "--tag-prefix", prefix)["liq_amplify"]
+            for mode in ["keep", "override", "ignore"]:
+                # Explicit request gain must survive keep/ignore even when
+                # the provider derives a different gain from ReplayGain.
+                expected = calculated if mode == "override" else "1.00 dB"
+                uri = 'annotate:liq_amplify="1.00 dB":' + str(normal)
+                cases.append((prefix, mode, uri, expected))
+            cases.append((prefix, "keep", str(normal), calculated))
+        raw = self.root / "raw.flac"
+        calculated = self.cli(raw)["liq_amplify"]
+        for mode in ["keep", "override", "ignore"]:
+            cases.append(("liq_", mode, str(raw), "" if mode == "ignore" else calculated))
+        script = self.root / "gain.liq"
+        entries = ",\n".join("(" + ",".join(json.dumps(v) for v in case) + ")" for case in cases)
+        script.write_text(f'''settings.log.stdout := true
+settings.log.level := 3
+%include {json.dumps(str(adapter))}
+settings.autocue.cue_file.path := {json.dumps(str(wrapper))}
+enable_autocue_metadata()
+list.iter(fun (entry) -> begin
+  let (prefix, mode, uri, expected) = entry
+  settings.autocue.cue_file.tag_prefix := prefix
+  settings.autocue.amplify_behavior := mode
+  r=request.create(uri)
+  if not request.resolve(r) then error.raise(error.invalid,"Gain test resolve failed") end
+  m=request.metadata(r)
+  if m["liq_autocue"] != "cue_file" or m["liq_amplify"] != expected then
+    error.raise(error.invalid,"Wrong gain: " ^ prefix ^ " " ^ mode ^ " " ^ uri ^ " expected=" ^ expected ^ " actual=" ^ m["liq_amplify"])
+  end
+  request.destroy(r)
+end, [{entries}])
+print("GAIN_POLICY_TEST_PASSED")
+output.dummy(blank())
+thread.run(delay=0.1, fun () -> shutdown())
+''')
+        p = subprocess.run(["liquidsoap", str(script)], capture_output=True, text=True)
+        self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+        self.assertIn("GAIN_POLICY_TEST_PASSED", p.stdout)
+
+    @unittest.skipUnless(shutil.which("liquidsoap"), "Liquidsoap is not installed")
     def test_liquidsoap_reads_selected_namespace(self):
         adapter = Path(os.environ.get(
             "AUTOCUE_LIQ", Path(__file__).resolve().parents[1] / "autocue.cue_file.liq"))
