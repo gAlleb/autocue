@@ -1,16 +1,29 @@
 # autocue changelog
 
-### 2026-10-30 — Stefan (gAlleb), Liquidsoap 2.5 branch
+### 2026-10-30 — v5.0.0, maintained by Stefan (gAlleb)
 
-- Update the Liquidsoap JSON object API and add explicit analysis diagnostics.
-- Preserve the upstream README verbatim beneath a current branch guide.
-
-- Add `--tag-prefix` and `settings.autocue.cue_file.tag_prefix` for custom
-  file tags. New libraries can use a namespace such as `ac_`; the legacy
-  `liq_` default, canonical JSON, and ReplayGain names remain compatible.
-- Normalize selected file tags before merging Liquidsoap request metadata;
-  do not fill incomplete custom sets from legacy `liq_*` measurements.
-- Add file round-trip and Liquidsoap integration tests for the tag prefix.
+- Establish `main` as the maintained development branch and version both
+  components as 5.0.0; preserve the original upstream `master`.
+- Support Liquidsoap 2.5 and test alongside 2.4.5, including the updated JSON
+  object API and documented custom / `cross.simple` transitions.
+- Apply `--tag-prefix` / `settings.autocue.cue_file.tag_prefix` to file tags,
+  request annotations, Python JSON input/output and informational metadata.
+  Custom-prefix JSON uses the selected names. Standard ReplayGain/R128 and
+  duration remain unchanged; the default `liq_` preserves existing libraries.
+- Keep incomplete custom file/JSON measurements separate from legacy tags,
+  while preserving explicit native Liquidsoap request controls.
+- Fix duplicate gain export and preserve explicit file/request gain according
+  to `keep`, `override` and `ignore`, including custom gain annotations.
+- Honor `<prefix>cue_file=true` JSON preference for both cached tags and fresh
+  analysis; preserve the integration's `false` bypass.
+- Add explicit analysis diagnostics and remove the fade-out warning for exact
+  fits. Add optional bounded fade-out extension, disabled by default.
+- Add file round-trip and Liquidsoap integration tests, legacy comparisons
+  and musical PCM comparisons. Preserve the upstream README verbatim beneath
+  the current release guide.
+- Leave the optional legacy version checker disabled in the example templates
+  and document its regex compatibility limitation; runtime autocue setup
+  continues to be initialized by the adapter itself.
 
 ### 2024-08-05 - v4.1.1
 

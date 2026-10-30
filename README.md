@@ -1,15 +1,35 @@
-# Autocue — Liquidsoap 2.5 branch
+# Autocue 5.0.0
 
-This is the `ls-2.5.0` branch maintained by **Stefan (gAlleb)**, based on
+This fork is maintained by **Stefan (gAlleb)**, based on
 the original Autocue by **Matthias C. Hormann (Moonbase59)** and its contributors.
+Development continues on `main`; use the `v5.0.0` tag for this release.
+The `master` branch preserves the original upstream state, and `ls-2.5.0`
+retains the earlier maintained branch.
 The original README is preserved verbatim below under
 [Original upstream README](#original-upstream-readme). Its compatibility
 warnings, personal notes and installation instructions describe the original
-upstream release. Start with this section for the changes in this branch.
+upstream release. Start with the sections below for the maintained version.
+
+## Key changes in 5.0.0
+
+- **Liquidsoap 2.5 support**, tested alongside 2.4.5, with updated JSON handling
+  and examples for custom crossfades and `cross.simple`.
+- **One configurable prefix** for file tags, request annotations, Python JSON
+  in both directions and informational metadata, e.g. `ac_`.
+- **Existing libraries remain compatible:** `liq_` is still the default;
+  existing tags need no migration or re-tagging.
+- **Correct gain priority and JSON preference:** explicit gain respects
+  `keep`/`override`/`ignore`, and `<prefix>cue_file=true` blocks stale JSON
+  measurements on cached and freshly analyzed paths.
+- **Clear analysis diagnostics** show when existing tags are reused and when
+  a full audio analysis runs.
+- **Optional fade-out extension** preserves eligible long endings with
+  configurable limits; it remains off by default.
 
 ## Contents
 
-- [Using this branch](#using-this-branch)
+- [Key changes in 5.0.0](#key-changes-in-500)
+- [Using this release](#using-this-release)
 - [Applying the crossfade](#applying-the-crossfade)
   - [Custom transition with linear fades](#custom-transition-with-linear-fades)
   - [Standard `cross.simple` transition](#standard-crosssimple-transition)
@@ -21,22 +41,28 @@ upstream release. Start with this section for the changes in this branch.
 - [Analysis diagnostics](#analysis-diagnostics)
 - [Changes maintained](#changes-maintained-by-stefan-galleb)
 
-## Using this branch
+## Using this release
 
-Use both updated files from this branch:
+Install or update both components from the same release:
 
 - [`cue_file`](cue_file): the external Python analyzer and file tag reader/writer.
 - [`autocue.cue_file.liq`](autocue.cue_file.liq): the Liquidsoap integration.
 
+`cue_file --version` reports `5.0.0`. Keep the optional legacy
+`check_autocue_setup()` helper disabled: its version-parsing expression is
+incompatible with the regex engine in the tested builds. The adapter
+initializes its settings when included and does not require that helper.
+The example templates leave its call commented out.
+
 Python 3 and FFmpeg with `ebur128` are required. Mutagen is recommended and is
-needed for writing some supported formats. This branch has been tested on
+needed for writing some supported formats. This release has been tested on
 Liquidsoap **2.5.0+git@cb8ba5d** and **2.4.5** in Linux containers. For 2.5,
 use a build containing the upstream autocue/cross fixes
 [#5587](https://github.com/savonet/liquidsoap/pull/5587) and
 [#5589](https://github.com/savonet/liquidsoap/pull/5589).
 
 The historical AzuraCast installation snippets below have not been validated
-for this branch. Test the integration with the Liquidsoap version used by your
+for this release. Test the integration with the Liquidsoap version used by your
 installation before applying them.
 
 ## Applying the crossfade
@@ -339,6 +365,9 @@ is unavailable rather than guessing.
 
 ## Changes maintained by Stefan (gAlleb)
 
+- **2026-10-30 — 5.0.0:** established `main` as the development branch and
+  versioned both maintained components as 5.0.0. Custom-prefix JSON follows
+  the selected namespace; the default `liq_` interface remains compatible.
 - **2026-09-16:** removed the forced `target_cross_duration` assignment and
   updated nullable values to `null` in the Liquidsoap integration.
 - **2026-10-30:** updated JSON object creation for Liquidsoap 2.5; added
