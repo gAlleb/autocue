@@ -7,6 +7,18 @@ The original README is preserved verbatim below under
 warnings, personal notes and installation instructions describe the original
 upstream release. Start with this section for the changes in this branch.
 
+## Contents
+
+- [Using this branch](#using-this-branch)
+- [Applying the crossfade](#applying-the-crossfade)
+  - [Custom transition with linear fades](#custom-transition-with-linear-fades)
+  - [Standard `cross.simple` transition](#standard-crosssimple-transition)
+- [Custom file tags for new libraries](#custom-file-tags-for-new-libraries)
+- [Existing libraries remain compatible](#existing-libraries-remain-compatible)
+- [Gain priority](#gain-priority)
+- [Analysis diagnostics](#analysis-diagnostics)
+- [Changes maintained by Stefan (gAlleb)](#changes-maintained-by-stefan-galleb)
+
 ## Using this branch
 
 Use both updated files from this branch:
