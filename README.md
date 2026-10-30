@@ -14,7 +14,7 @@ upstream release. Start with this section for the changes in this branch.
   - [Custom transition with linear fades](#custom-transition-with-linear-fades)
   - [Standard `cross.simple` transition](#standard-crosssimple-transition)
 - [Optional fade-out extension](#optional-fade-out-extension)
-- [Custom file tags for new libraries](#custom-file-tags-for-new-libraries)
+- [Custom tags, annotations and JSON](#custom-tags-annotations-and-json)
 - [Existing libraries remain compatible](#existing-libraries-remain-compatible)
 - [Gain priority](#gain-priority)
 - [The `liq_cue_file` preference flag](#the-liq_cue_file-preference-flag)
@@ -191,10 +191,14 @@ that the disabled mode preserves the previous PCM byte for byte. Enabling
 extension preserved entry timing and the full cue-out; the examples used
 tails of 5.9, 6.0 and 10.7 seconds with the same stored gain in both versions.
 
-## Custom file tags for new libraries
+## Custom tags, annotations and JSON
 
-Liquidsoap uses `liq_*` as working metadata. New libraries should use a
-separate file tag namespace. Choose a prefix when tagging, for example:
+Liquidsoap reserves `liq_*` for its own working metadata. New integrations
+should use a separate namespace for autocue data, following
+[Toots' recommendation](https://github.com/AzuraCast/AzuraCast/discussions/7584#discussioncomment-11438998)
+and the separation used in his earlier
+[cue_file integration](https://github.com/savonet/liquidsoap/pull/4208/files).
+Choose a prefix when tagging, for example:
 
 ```sh
 python3 ./cue_file --tag-prefix ac_ -kwnrf "/path/to/track.flac"
@@ -208,19 +212,52 @@ settings.autocue.cue_file.tag_prefix := "ac_"
 enable_autocue_metadata()
 ```
 
-This stores and reads `ac_cue_in`, `ac_cue_out`, `ac_cross_start_next`, etc.
+The selected prefix applies to **file tags, request annotations and the
+Python program's JSON input and output**. With `ac_`, use `ac_cue_in`,
+`ac_cue_out`, `ac_cross_start_next`, `ac_amplify`, `ac_cue_file`, etc.
+For example, a partial request override can supply a manual entry point and
+fade while keeping the other file measurements:
+
+```text
+annotate:ac_cue_in="1.25",ac_fade_in="0.3":/path/to/track.flac
+```
+
+An equivalent JSON override file passed to `cue_file --tag-prefix ac_ -j
+overrides.json /path/to/track.flac` uses the same names:
+
+```json
+{"ac_cue_in": 1.25, "ac_fade_in": 0.3}
+```
+
+The JSON response also uses `ac_*`. The integration translates these values
+into the typed autocue result (`cue_in`, `cue_out`, `start_next`, `amplify`,
+etc.); Liquidsoap then creates the native `liq_*` controls consumed by the
+transition and amplification operators. Informational extra metadata exported
+by this provider uses the selected prefix too. The private calculation keys
+do not form another external interface and do not control Liquidsoap.
+
 Other prefixes are supported: letters, digits, underscores, dots and hyphens,
 starting with a letter or underscore. Prefixes are lowercased; a trailing
-underscore is not added automatically.
+underscore is not added automatically. Quote annotation keys containing
+punctuation, e.g. `annotate:"radio.v1-cue_in"="1.25":/path/to/track.flac`.
+Prefixes that collide with standard metadata names, such as `replaygain_`,
+are rejected.
 
-Only known autocue file tag names are translated. Internal JSON, the record
-returned to Liquidsoap, request annotations and the resulting `liq_*` control
-metadata keep their existing contract. ReplayGain/R128 names are unchanged.
-An incomplete custom tag set is not silently completed from legacy `liq_*`
-measurements. Writing tags preserves unrelated tags and other namespaces;
-it does not migrate or delete them. Liquidsoap can still read any legacy
+Only known autocue names are translated. Standard ReplayGain/R128 fields,
+`duration` and the runtime `analysis` object keep their names. Other text and
+metadata values are preserved. An incomplete custom file/JSON tag set is not
+silently completed from legacy `liq_*` measurements. Both updated components
+are required when using a custom prefix; older custom-prefix versions used
+`liq_*` JSON regardless of the file setting.
+
+Native `liq_*` request annotations remain available as explicit engine
+controls and win over a custom alias for the same field. Liquidsoap may
+disable autocue before calling any provider when native cue/fade annotations
+are present; custom annotations let this provider reconcile partial values.
+This existing native behavior is preserved. Liquidsoap can also read legacy
 `liq_*` controls present in a file directly, so avoid conflicting legacy
-controls in new custom-tag libraries.
+controls in new custom-tag libraries. Writing tags preserves unrelated tags
+and other namespaces; it does not migrate or delete them.
 
 `-f` forces analysis; omit it to reuse complete existing tags. `-w` enables
 writing; omit it to read without modifying the file. Selecting a prefix does
@@ -236,15 +273,15 @@ legacy setting:
 settings.autocue.cue_file.tag_prefix := "liq_"
 ```
 
-Custom-prefix support is an opt-in file storage feature. It does not change
+Custom-prefix support is opt-in. It does not change
 the cue-point analysis or fade reconciliation rules. It also does not add a
 new fast path bypassing the external Python process.
 
 ## Gain priority
 
 This integration selects `settings.autocue.amplify_behavior := "keep"`.
-In this mode an explicit `liq_amplify` annotation, or an `amplify` file tag
-under the selected prefix, is preserved even if ReplayGain or the current
+In this mode an explicit `amplify` annotation or file tag under the selected
+prefix (or a native `liq_amplify` annotation) is preserved even if ReplayGain or the current
 loudness target would produce a different gain. An annotation takes precedence
 over the file tag. When `unify_loudness_correction` is enabled, the exported
 ReplayGain is aligned with the preserved gain; audio file tags are not rewritten
@@ -258,8 +295,9 @@ normal provider calculation still applies.
 `"ignore"` suppresses gain returned by the autocue provider. Native `liq_amplify`
 file tags and request annotations can still be read by Liquidsoap itself;
 custom-prefix file gain is supplied by this provider and is therefore omitted
-in this mode. Gain is exported once, so these policies are not bypassed by
-duplicate metadata.
+in this mode. An explicit custom-prefix request gain is preserved in `ignore`,
+just like an explicit native request gain. Gain is exported once, so these
+policies are not bypassed by duplicate metadata.
 
 ## The `liq_cue_file` preference flag
 
@@ -271,9 +309,11 @@ In the Liquidsoap integration, this flag controls the following behavior:
 | `false` | Skip this autocue provider without calling the Python program. Liquidsoap can still read native file controls. |
 | `true` | Prefer cue-file values; ignore incoming JSON measurements when reading tags and after analysis. |
 
-An explicit request flag takes precedence over the file flag. For custom file
-prefixes, the file flag is `<prefix>cue_file`; request annotations and JSON
-continue to use `liq_cue_file`.
+An explicit request flag takes precedence over the file flag. The selected
+prefix applies to this flag in files, annotations and JSON: for example,
+`ac_cue_file`, including `annotate:ac_cue_file="false":/path/to/track.flac`.
+The default name remains `liq_cue_file`. A native `liq_cue_file` request
+annotation is also accepted by the integration for compatibility.
 
 `true` does not force audio analysis. Complete existing file tags are reused;
 missing measurements or `--force` still cause normal analysis. JSON is not
@@ -312,12 +352,22 @@ is unavailable rather than guessing.
   threshold and maximum eligible tail; the default remains disabled.
 - **2026-10-30:** fixed `liq_cue_file=true` JSON preference for cached tags and
   fresh analysis, preserving normal tagging and the integration's `false` bypass.
+- **2026-10-30:** extended the selected prefix to request annotations, JSON in
+  both directions and informational extra metadata, keeping `liq_` as the
+  default. Preserved native request controls and gain policies.
 
-Twelve black-box tests cover file round-trips in MP3, FLAC and M4A/ALAC,
+Black-box tests cover file round-trips in MP3, FLAC and M4A/ALAC,
 legacy compatibility, mixed namespaces, request/JSON overrides and audio
 preservation, gain priority with conflicting file tags and annotations,
 fade-out extension boundaries and cue-point preservation, and JSON/file flag
 priority on cached and analyzed paths and through the Liquidsoap adapter.
+They also exercise five prefixes through the real request resolver, with
+JSON enabled and disabled, and inspect the actual JSON exchanged with Python.
+An additional 28 real-time renders on both engine versions compared three
+musical transition pairs with the previous code, default `liq_` and custom
+file tags. Piano transitions additionally covered a complete annotation/JSON
+cache on files without autocue tags and the optional fade-out extension.
+The compared PCM was byte-identical across namespaces and engine versions.
 Run them with FFmpeg, Mutagen and optionally Liquidsoap installed:
 
 ```sh
