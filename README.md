@@ -31,6 +31,7 @@ upstream release. Start with the sections below for the maintained version.
 - [Key changes in 5.0.0](#key-changes-in-500)
 - [Using this release](#using-this-release)
 - [Applying the crossfade](#applying-the-crossfade)
+  - [Existing `add` transition with metadata delay](#existing-add-transition-with-metadata-delay)
   - [Custom transition with linear fades](#custom-transition-with-linear-fades)
   - [Standard `cross.simple` transition](#standard-crosssimple-transition)
 - [Optional fade-out extension](#optional-fade-out-extension)
@@ -72,10 +73,65 @@ the fades and overlap. The examples below assume `radio` is your existing
 source and this adapter has been included and selected. Choose one transition
 and apply `cross` once.
 
+### Existing `add` transition with metadata delay
+
+This is the metadata-delay form used by the maintained radio stack, shown
+with explicit linear fades. It copies the ending track's next-entry delay
+into the incoming fade metadata, while preserving an explicit incoming
+`liq_fade_in_delay`:
+
+```liquidsoap
+def cue_file_transition(ending, starting) =
+    fade_in_delay = starting.metadata["liq_fade_in_delay"]
+    fade_in_delay =
+        if fade_in_delay == "" then
+            ending.metadata["liq_fade_out_start_next"]
+        else
+            fade_in_delay
+        end
+
+    fade_in_metadata =
+        if fade_in_delay == "" then
+            starting.metadata
+        else
+            [
+                ...list.assoc.remove("liq_fade_in_delay", starting.metadata),
+                ("liq_fade_in_delay", fade_in_delay)
+            ]
+        end
+
+    add(normalize=false, [
+        fade.in(
+            type="lin",
+            initial_metadata=fade_in_metadata,
+            duration=settings.autocue.cue_file.fade_in(),
+            starting.source
+        ),
+        fade.out(
+            type="lin",
+            initial_metadata=ending.metadata,
+            duration=settings.autocue.cue_file.fade_out(),
+            ending.source
+        )
+    ])
+end
+
+radio = cross(
+    duration=settings.autocue.cue_file.fade_out(),
+    cue_file_transition,
+    radio
+)
+```
+
+When neither track provides a delay, the incoming metadata is passed through
+unchanged and the fade uses its default delay. This form remains a working
+choice; the next example expresses the same coordination with a direct
+argument.
+
 ### Custom transition with linear fades
 
-This is the transition used by the maintained radio stack, expressed with a
-direct `delay` argument instead of copying the delay into incoming metadata:
+The same linear transition can use a direct `delay` argument instead of
+copying the delay into incoming metadata:
 
 ```liquidsoap
 def cue_file_transition(ending, starting) =
@@ -154,7 +210,7 @@ initial_fade_out_metadata=[
 
 This explicitly forces the two fade types. Global `settings.fade.*.type`
 alone does not change the sinusoidal defaults selected inside `cross.simple`.
-Both examples retain this project's external autocue provider.
+All three examples retain this project's external autocue provider.
 
 These transitions were compared by rendering synthetic tagged MP3 files and
 explicit transition cases on Liquidsoap 2.4.5 and 2.5.0+git@cb8ba5d with 20 ms
