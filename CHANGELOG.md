@@ -1,12 +1,16 @@
 # autocue changelog
 
-### Unreleased
+### 2026-10-30 — v5.0.2, maintained by Stefan (gAlleb)
 
 - Rename private working keys to `autocue_*` in Python and the Liquidsoap
   adapter. Keep selected file/annotation/JSON names, native request controls
   and the provider's typed return fields compatible.
 - Cover the external `autocue_` prefix, legacy flag/gain priorities and
   namespace isolation in regression tests.
+- Validate with 26 tests on each of Liquidsoap 2.4.5 and 2.5, old/new CLI
+  and tag-writing comparisons, and 28 musical renders with matching PCM.
+- Keep `liq_` as the default external prefix; existing libraries need no
+  re-tagging. Audio analysis and transition calculations remain unchanged.
 
 ### 2026-10-30 — v5.0.1, maintained by Stefan (gAlleb)
 

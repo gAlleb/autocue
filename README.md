@@ -1,8 +1,8 @@
-# autocue 5.0.1
+# autocue 5.0.2
 
 Maintained by **Stefan (gAlleb)**, based on autocue by
 **Matthias C. Hormann (Moonbase59)** and its contributors.
-Use `v5.0.1` for this release; development continues on `main`.
+Use `v5.0.2` for this release; development continues on `main`.
 `master` preserves upstream; `ls-2.5.0` retains the earlier maintained branch.
 The [original README](#original-upstream-readme) is preserved below;
 its warnings and installation instructions describe the upstream release.
@@ -45,7 +45,7 @@ Install both components from this release:
 - [`cue_file`](cue_file): the external Python analyzer and file tag reader/writer.
 - [`autocue.cue_file.liq`](autocue.cue_file.liq): the Liquidsoap integration.
 
-`cue_file --version` reports `5.0.1`. Including the adapter initializes its
+`cue_file --version` reports `5.0.2`. Including the adapter initializes its
 settings without a startup probe. `check_autocue_setup()` remains disabled
 in configurations and examples.
 
@@ -337,7 +337,7 @@ The JSON response also uses `ac_*`. The integration translates these values
 into the typed autocue result (`cue_in`, `cue_out`, `start_next`, `amplify`,
 etc.); Liquidsoap then creates the native `liq_*` controls consumed by the
 transition and amplification operators. Informational extra metadata exported
-by this provider uses the selected prefix too. On `main` after 5.0.1, private
+by this provider uses the selected prefix too. Since 5.0.2, private
 calculation keys use `autocue_*`; they do not control Liquidsoap. The external
 prefix may also be `autocue_` without changing this boundary.
 
