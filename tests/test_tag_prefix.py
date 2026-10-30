@@ -97,6 +97,53 @@ class TagPrefixTests(unittest.TestCase):
         self.assertEqual(result["liq_cue_in"], 1.25)
         self.assertFalse(result["analysis"]["performed"])
 
+    def test_cue_file_flag_controls_json_on_cached_and_analyzed_paths(self):
+        for prefix in ["liq_", "ac_"]:
+            for file_flag in [None, True, False]:
+                path = self.root / (prefix + str(file_flag) + "-json.flac")
+                shutil.copyfile(self.files["flac", prefix], path)
+                tags = FLAC(path)
+                if file_flag is not None:
+                    tags[prefix + "cue_file"] = str(file_flag).lower()
+                tags.save()
+                before = hashlib.sha256(path.read_bytes()).hexdigest()
+                for force in [False, True]:
+                    args = ["--tag-prefix", prefix] + (["-f"] if force else [])
+                    baseline = self.cli(path, *args)
+                    for json_flag in [None, True, False]:
+                        with self.subTest(prefix=prefix, file=file_flag, json=json_flag, force=force):
+                            data = {"liq_cue_in": "3.0"}
+                            if json_flag is not None:
+                                data["liq_cue_file"] = json_flag
+                            override = self.root / "flag.json"
+                            override.write_text(json.dumps(data))
+                            result = self.cli(path, *args, "-j", str(override))
+                            preferred = file_flag if json_flag is None else json_flag
+                            if preferred:
+                                self.assertEqual(result, baseline)
+                            else:
+                                self.assertEqual(result["liq_cue_in"], 3.)
+                            self.assertEqual(result["analysis"]["performed"], force)
+                    # Ignored measurements must not even be converted to floats.
+                    override.write_text(json.dumps({"LIQ_CUE_FILE": "TRUE", "liq_cue_in": "invalid"}))
+                    self.assertEqual(self.cli(path, *args, "-j", str(override)), baseline)
+                self.assertEqual(before, hashlib.sha256(path.read_bytes()).hexdigest())
+
+    def test_true_flag_does_not_fill_missing_file_measurements_from_json(self):
+        for prefix in ["liq_", "ac_"]:
+            path = self.root / (prefix + "missing-json.flac")
+            shutil.copyfile(self.files["flac", prefix], path)
+            tags = FLAC(path)
+            tags[prefix + "cue_file"] = "true"
+            del tags[prefix + "cue_out"]
+            tags.save()
+            baseline = self.cli(path, "--tag-prefix", prefix)
+            override = self.root / "missing.json"
+            override.write_text(json.dumps({"liq_cue_out": "8.0", "liq_cue_in": "3.0"}))
+            result = self.cli(path, "--tag-prefix", prefix, "-j", str(override))
+            self.assertTrue(result["analysis"]["performed"])
+            self.assertEqual(result, baseline)
+
     def test_partial_namespace_does_not_use_legacy(self):
         path = self.mixed_file("partial.flac")
         tags = FLAC(path)
@@ -139,6 +186,87 @@ class TagPrefixTests(unittest.TestCase):
             result = self.cli(path, "--tag-prefix", prefix)
             self.assertFalse(result["analysis"]["performed"])
             self.assertIn(prefix + "cue_in", self.tags(path))
+
+    @unittest.skipUnless(shutil.which("liquidsoap"), "Liquidsoap is not installed")
+    def test_liquidsoap_cue_file_flag_priority(self):
+        adapter = Path(os.environ.get(
+            "AUTOCUE_LIQ", Path(__file__).resolve().parents[1] / "autocue.cue_file.liq"))
+        calls = self.root / "flag-calls"
+        wrapper = self.root / "flag-reader"
+        wrapper.write_text("#!/bin/sh\nprintf 'call\\n' >> " + shlex.quote(str(calls))
+                           + "\nexec " + shlex.quote(sys.executable) + " "
+                           + shlex.quote(str(CUE_FILE)) + ' "$@"\n')
+        wrapper.chmod(0o755)
+        cases = []
+        for prefix in ["liq_", "ac_"]:
+            for file_flag in [None, True, False]:
+                path = self.root / (prefix + str(file_flag) + "-adapter-flag.flac")
+                shutil.copyfile(self.files["flac", prefix], path)
+                tags = FLAC(path)
+                if file_flag is not None:
+                    tags[prefix + "cue_file"] = str(file_flag).lower()
+                tags.save()
+                for request_flag in [None, True, False]:
+                    effective = file_flag if request_flag is None else request_flag
+                    expected = "skip" if effective is False else "0.0" if effective else "3.0"
+                    cases.append((prefix, str(path), "" if request_flag is None else str(request_flag).lower(), expected))
+        entries = ",\n".join("(" + ",".join(json.dumps(v) for v in row) + ")" for row in cases)
+        script = self.root / "adapter-flag.liq"
+        script.write_text(f'''settings.log.stdout := true
+settings.log.level := 3
+%include {json.dumps(str(adapter))}
+settings.autocue.cue_file.path := {json.dumps(str(wrapper))}
+list.iter(fun (use_json) -> begin
+  settings.autocue.cue_file.use_json_metadata := use_json
+  list.iter(fun (entry) -> begin
+    let (prefix, path, flag, expected) = entry
+    settings.autocue.cue_file.tag_prefix := prefix
+    r=request.create(path)
+    if not request.resolve(r) then error.raise(error.invalid,"Cannot read test tags") end
+    request_meta=[("liq_cue_in","3.0")]
+    request_meta=if flag == "" then request_meta else [("liq_cue_file",flag),...request_meta] end
+    data=cue_file(request_metadata=request_meta,file_metadata=request.metadata(r),path)
+    if expected == "skip" then
+      if null.defined(data) then error.raise(error.invalid,"False flag did not skip adapter") end
+    else
+      data=null.get(data)
+      if data.cue_in != float_of_string(expected) then
+        error.raise(error.invalid,"Wrong adapter flag priority: " ^ string(entry) ^ " got=" ^ string(data.cue_in))
+      end
+    end
+    request.destroy(r)
+  end,[{entries}])
+end,[false,true])
+# Exercise the registered resolver too. start_next is deliberately used here:
+# native explicit cue_in/cue_out annotations disable autocue before the provider.
+enable_autocue_metadata()
+list.iter(fun (entry) -> begin
+  let (prefix, path, flag, expected) = entry
+  settings.autocue.cue_file.tag_prefix := prefix
+  control=if flag == "" then "" else ',liq_cue_file="' ^ flag ^ '"' end
+  uri='annotate:liq_cross_start_next="3.0"' ^ control ^ ':' ^ path
+  r=request.create(uri)
+  if not request.resolve(r) then error.raise(error.invalid,"Resolver failed") end
+  m=request.metadata(r)
+  if expected == "skip" then
+    if m["liq_autocue"] != "" then error.raise(error.invalid,"Resolver ignored false flag") end
+  else
+    expected_end=if expected == "0.0" then 11.9 else 5.5 end
+    if m["liq_autocue"] != "cue_file" or abs(float_of_string(m["liq_cue_out"])-expected_end) > 0.00001 then
+      error.raise(error.invalid,"Wrong resolved cue-out: " ^ string(entry) ^ " actual=" ^ m["liq_cue_out"])
+    end
+  end
+  request.destroy(r)
+end,[{entries}])
+print("FLAG_PRIORITY_TEST_PASSED")
+output.dummy(blank())
+thread.run(delay=0.1,fun () -> shutdown())
+''')
+        p = subprocess.run(["liquidsoap", str(script)], capture_output=True, text=True)
+        self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+        self.assertIn("FLAG_PRIORITY_TEST_PASSED", p.stdout)
+        # Five combinations per prefix: twice direct, once via the resolver.
+        self.assertEqual(calls.read_text().splitlines(), ["call"] * 30)
 
     @unittest.skipUnless(shutil.which("liquidsoap"), "Liquidsoap is not installed")
     def test_liquidsoap_tail_extension(self):

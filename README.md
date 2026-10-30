@@ -17,6 +17,7 @@ upstream release. Start with this section for the changes in this branch.
 - [Custom file tags for new libraries](#custom-file-tags-for-new-libraries)
 - [Existing libraries remain compatible](#existing-libraries-remain-compatible)
 - [Gain priority](#gain-priority)
+- [The `liq_cue_file` preference flag](#the-liq_cue_file-preference-flag)
 - [Analysis diagnostics](#analysis-diagnostics)
 - [Changes maintained](#changes-maintained-by-stefan-galleb)
 
@@ -260,6 +261,32 @@ custom-prefix file gain is supplied by this provider and is therefore omitted
 in this mode. Gain is exported once, so these policies are not bypassed by
 duplicate metadata.
 
+## The `liq_cue_file` preference flag
+
+In the Liquidsoap integration, this flag controls the following behavior:
+
+| Effective value | Behavior |
+| --- | --- |
+| Absent | Normal processing; existing metadata/JSON can override cue-file values. |
+| `false` | Skip this autocue provider without calling the Python program. Liquidsoap can still read native file controls. |
+| `true` | Prefer cue-file values; ignore incoming JSON measurements when reading tags and after analysis. |
+
+An explicit request flag takes precedence over the file flag. For custom file
+prefixes, the file flag is `<prefix>cue_file`; request annotations and JSON
+continue to use `liq_cue_file`.
+
+`true` does not force audio analysis. Complete existing file tags are reused;
+missing measurements or `--force` still cause normal analysis. JSON is not
+used to fill missing measurements in this mode, and cannot overwrite the
+fresh analysis afterward. Ignored JSON measurements are not parsed, so stale
+invalid measurement strings cannot break an otherwise usable file.
+
+The external CLI remains a tagging tool: `liq_cue_file=false` does not cancel
+an explicit CLI invocation. Skipping the invocation is the integration's job.
+This preference does not replace Liquidsoap's separate gain policy or disable
+its own native metadata handling. Existing tags need no migration; the usual
+tagging command without `--json` keeps its previous behavior.
+
 ## Analysis diagnostics
 
 The Python JSON response includes optional runtime `analysis` information:
@@ -283,11 +310,14 @@ is unavailable rather than guessing.
   alternative after comparing their rendered PCM on Liquidsoap 2.4.5 and 2.5.
 - **2026-10-30:** added optional fade-out extension with a configurable extra-tail
   threshold and maximum eligible tail; the default remains disabled.
+- **2026-10-30:** fixed `liq_cue_file=true` JSON preference for cached tags and
+  fresh analysis, preserving normal tagging and the integration's `false` bypass.
 
-Nine black-box tests cover file round-trips in MP3, FLAC and M4A/ALAC,
+Twelve black-box tests cover file round-trips in MP3, FLAC and M4A/ALAC,
 legacy compatibility, mixed namespaces, request/JSON overrides and audio
 preservation, gain priority with conflicting file tags and annotations,
-and fade-out extension boundaries and cue-point preservation.
+fade-out extension boundaries and cue-point preservation, and JSON/file flag
+priority on cached and analyzed paths and through the Liquidsoap adapter.
 Run them with FFmpeg, Mutagen and optionally Liquidsoap installed:
 
 ```sh
