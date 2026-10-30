@@ -74,6 +74,27 @@ Custom-prefix support is an opt-in file storage feature. It does not change
 the cue-point analysis or fade reconciliation rules. It also does not add a
 new fast path bypassing the external Python process.
 
+## Gain priority
+
+This integration selects `settings.autocue.amplify_behavior := "keep"`.
+In this mode an explicit `liq_amplify` annotation, or an `amplify` file tag
+under the selected prefix, is preserved even if ReplayGain or the current
+loudness target would produce a different gain. An annotation takes precedence
+over the file tag. When `unify_loudness_correction` is enabled, the exported
+ReplayGain is aligned with the preserved gain; audio file tags are not rewritten
+by this reconciliation.
+
+Use `"override"` to prefer the provider's calculated gain, including target
+adjustments and optional clipping prevention. `"keep"` preserves explicit gain
+instead of applying those adjustments to it. Without an explicit gain the
+normal provider calculation still applies.
+
+`"ignore"` suppresses gain returned by the autocue provider. Native `liq_amplify`
+file tags and request annotations can still be read by Liquidsoap itself;
+custom-prefix file gain is supplied by this provider and is therefore omitted
+in this mode. Gain is exported once, so these policies are not bypassed by
+duplicate metadata.
+
 ## Analysis diagnostics
 
 The Python JSON response includes optional runtime `analysis` information:
@@ -91,10 +112,13 @@ is unavailable rather than guessing.
 - **2026-10-30:** updated JSON object creation for Liquidsoap 2.5; added
   analysis diagnostics and configurable file tag prefixes, documentation and
   automated tests. Legacy tag values and playback behavior are preserved.
+- **2026-10-30:** fixed duplicate gain export and preservation of explicit
+  file gain in `keep` mode; removed the fade-out warning for exact fits.
 
-Seven black-box tests cover file round-trips in MP3, FLAC and M4A/ALAC,
+Eight black-box tests cover file round-trips in MP3, FLAC and M4A/ALAC,
 legacy compatibility, mixed namespaces, request/JSON overrides and audio
-preservation. Run them with FFmpeg, Mutagen and optionally Liquidsoap installed:
+preservation, and gain priority with conflicting file tags and annotations.
+Run them with FFmpeg, Mutagen and optionally Liquidsoap installed:
 
 ```sh
 python3 -m unittest discover -s tests -v

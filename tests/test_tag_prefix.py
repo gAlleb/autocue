@@ -149,14 +149,31 @@ class TagPrefixTests(unittest.TestCase):
                            + shlex.quote(str(CUE_FILE)) + ' "$@"\n')
         wrapper.chmod(0o755)
         cases = []
+        file_cases = []
         for prefix in ["liq_", "ac_"]:
             normal = self.files["flac", prefix]
             calculated = self.cli(normal, "--tag-prefix", prefix)["liq_amplify"]
+            explicit = self.root / (prefix + "gain.flac")
+            shutil.copyfile(normal, explicit)
+            tags = FLAC(explicit)
+            tags[prefix + "amplify"] = "1.00 dB"
+            tags.save()
+            file_cases.append((prefix, str(explicit), calculated,
+                               f"{float(calculated.split()[0]) + 4:.2f} dB"))
             for mode in ["keep", "override", "ignore"]:
                 # Explicit request gain must survive keep/ignore even when
                 # the provider derives a different gain from ReplayGain.
                 expected = calculated if mode == "override" else "1.00 dB"
                 uri = 'annotate:liq_amplify="1.00 dB":' + str(normal)
+                cases.append((prefix, mode, uri, expected))
+                # Custom file tags enter through this provider, so ignore
+                # suppresses their gain; legacy liq_amplify is also read natively.
+                expected_file = calculated if mode == "override" else (
+                    "" if mode == "ignore" and prefix != "liq_" else "1.00 dB")
+                cases.append((prefix, mode, str(explicit), expected_file))
+                # Request annotations must still take precedence over file gain.
+                uri = 'annotate:liq_amplify="2.00 dB":' + str(explicit)
+                expected = calculated if mode == "override" else "2.00 dB"
                 cases.append((prefix, mode, uri, expected))
             cases.append((prefix, "keep", str(normal), calculated))
         raw = self.root / "raw.flac"
@@ -165,6 +182,7 @@ class TagPrefixTests(unittest.TestCase):
             cases.append(("liq_", mode, str(raw), "" if mode == "ignore" else calculated))
         script = self.root / "gain.liq"
         entries = ",\n".join("(" + ",".join(json.dumps(v) for v in case) + ")" for case in cases)
+        files = ",\n".join("(" + ",".join(json.dumps(v) for v in case) + ")" for case in file_cases)
         script.write_text(f'''settings.log.stdout := true
 settings.log.level := 3
 %include {json.dumps(str(adapter))}
@@ -180,8 +198,44 @@ list.iter(fun (entry) -> begin
   if m["liq_autocue"] != "cue_file" or m["liq_amplify"] != expected then
     error.raise(error.invalid,"Wrong gain: " ^ prefix ^ " " ^ mode ^ " " ^ uri ^ " expected=" ^ expected ^ " actual=" ^ m["liq_amplify"])
   end
+  if mode == "keep" and m["replaygain_track_gain"] != expected then
+    error.raise(error.invalid,"Kept gain and ReplayGain differ")
+  end
   request.destroy(r)
 end, [{entries}])
+list.iter(fun (entry) -> begin
+  let (prefix, uri, original_rg, new_gain) = entry
+  settings.autocue.cue_file.tag_prefix := prefix
+  settings.autocue.amplify_behavior := "keep"
+  settings.autocue.cue_file.unify_loudness_correction := false
+  r=request.create(uri)
+  ignore(request.resolve(r))
+  m=request.metadata(r)
+  if m["liq_amplify"] != "1.00 dB" or m["replaygain_track_gain"] != original_rg then
+    error.raise(error.invalid,"Unification disabled: file gain or ReplayGain changed")
+  end
+  request.destroy(r)
+  settings.autocue.cue_file.unify_loudness_correction := true
+  settings.autocue.cue_file.target := -14.0
+  settings.autocue.cue_file.noclip := true
+  r=request.create(uri)
+  ignore(request.resolve(r))
+  m=request.metadata(r)
+  if m["liq_amplify"] != "1.00 dB" or m["replaygain_track_gain"] != "1.00 dB" or m["liq_reference_loudness"] != "-18.00 LUFS" then
+    error.raise(error.invalid,"Keep changed explicit gain/reference after target change")
+  end
+  request.destroy(r)
+  settings.autocue.amplify_behavior := "override"
+  r=request.create(uri)
+  ignore(request.resolve(r))
+  m=request.metadata(r)
+  if m["liq_amplify"] != new_gain then
+    error.raise(error.invalid,"Override failed to adjust gain to target")
+  end
+  request.destroy(r)
+  settings.autocue.cue_file.target := -18.0
+  settings.autocue.cue_file.noclip := false
+end, [{files}])
 print("GAIN_POLICY_TEST_PASSED")
 output.dummy(blank())
 thread.run(delay=0.1, fun () -> shutdown())
