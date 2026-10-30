@@ -50,7 +50,7 @@ class TagPrefixTests(unittest.TestCase):
                 "sine=frequency=440:duration=12", "-af", "afade=t=out:st=9:d=3",
                 "-metadata", "artist=Prefix test", "-c:a", codec, str(raw)
             ], check=True)
-            for prefix in ["liq_", "ac_"]:
+            for prefix in ["liq_", "ac_", "autocue_"]:
                 path = cls.root / (prefix + "." + ext)
                 shutil.copyfile(raw, path)
                 cls.cli(path, "--tag-prefix", prefix, "-kwnrf")
@@ -93,6 +93,71 @@ class TagPrefixTests(unittest.TestCase):
                 self.assertIn("ac_cue_in", wire)
                 self.assertFalse(any(k.startswith("liq_") for k in wire))
 
+    def test_autocue_prefix_round_trip_all_formats(self):
+        for ext in ["mp3", "flac", "m4a"]:
+            with self.subTest(ext=ext):
+                path = self.files[ext, "autocue_"]
+                self.assertEqual(self.cli(self.files[ext, "liq_"]),
+                                 self.cli(path, "--tag-prefix", "autocue_"))
+                before = self.raw_cli(path, "--tag-prefix", "autocue_")
+                audio_command = ["ffmpeg", "-v", "error", "-i", str(path),
+                                 "-map", "0:a:0", "-f", "hash", "-hash", "sha256", "-"]
+                audio_before = subprocess.check_output(audio_command)
+                self.cli(path, "--tag-prefix", "autocue_", "-w", "-r")
+                self.assertEqual(before, self.raw_cli(path, "--tag-prefix", "autocue_"))
+                self.assertEqual(audio_before, subprocess.check_output(audio_command))
+                tags = self.tags(path)
+                self.assertIn("autocue_cue_in", tags)
+                self.assertFalse(any(k.startswith("liq_") for k in tags))
+
+    def test_unselected_working_names_do_not_override_inputs(self):
+        poison = {"autocue_cue_in": "invalid", "autocue_amplify": "invalid",
+                  "autocue_cue_file": "false", "autocue_fade_out": "invalid"}
+        adapter = Path(os.environ.get("AUTOCUE_LIQ", Path(__file__).resolve().parents[1] / "autocue.cue_file.liq"))
+        for prefix in ["liq_", "ac_"]:
+            path = self.root / (prefix + "foreign-working.flac")
+            shutil.copyfile(self.files["flac", prefix], path)
+            expected = self.raw_cli(path, "--tag-prefix", prefix)
+            tags = FLAC(path)
+            tags.update(poison)
+            tags.save()
+            payload = self.root / (prefix + "foreign-working.json")
+            payload.write_text(json.dumps(poison))
+            self.assertEqual(expected, self.raw_cli(path, "--tag-prefix", prefix, "-j", str(payload)))
+            if not shutil.which("liquidsoap"):
+                continue
+            entries = ",".join(f"({json.dumps(k)},{json.dumps(v)})" for k,v in poison.items())
+            script = self.root / (prefix + "foreign-working.liq")
+            script.write_text(f'''%include {json.dumps(str(adapter))}
+settings.autocue.cue_file.path := {json.dumps(str(CUE_FILE))}
+settings.autocue.cue_file.tag_prefix := {json.dumps(prefix)}
+r=request.create({json.dumps(str(path))})
+if not request.resolve(r) then error.raise(error.invalid,"Cannot resolve fixture") end
+list.iter(fun (use_json) -> begin
+  settings.autocue.cue_file.use_json_metadata := use_json
+  data=null.get(cue_file(request_metadata=[{entries}],file_metadata=request.metadata(r),{json.dumps(str(path))}))
+  if data.cue_in != {expected[prefix+'cue_in']} or data.amplify != {json.dumps(expected[prefix+'amplify'])} then
+    error.raise(error.invalid,"Unselected working keys affected provider")
+  end
+  # Both selected aliases and legacy native names still configure ignored overrides.
+  list.iter(fun (ignored) -> begin
+    settings.autocue.cue_file.ignored_overrides := [ignored]
+    settings.autocue.cue_file.force_analysis := true
+    data=null.get(cue_file(request_metadata=[({json.dumps(prefix+'cue_in')},"3.0")],file_metadata=request.metadata(r),{json.dumps(str(path))}))
+    # Preserve existing behavior: JSON overrides apply in Python before
+    # the adapter's ignored_overrides reconciliation.
+    expected_in=if use_json then 3.0 else {expected[prefix+'cue_in']} end
+    if data.cue_in != expected_in then error.raise(error.invalid,"Ignored override changed") end
+  end,[{json.dumps(prefix+'cue_in')},"liq_cue_in"])
+  settings.autocue.cue_file.force_analysis := false
+end,[false,true])
+request.destroy(r)
+output.dummy(blank())
+thread.run(delay=0.1,fun () -> shutdown())
+''')
+            p = subprocess.run(["liquidsoap", str(script)], capture_output=True, text=True, timeout=30)
+            self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+
     def mixed_file(self, name):
         path = self.root / name
         shutil.copyfile(self.files["flac", "ac_"], path)
@@ -121,7 +186,7 @@ class TagPrefixTests(unittest.TestCase):
         self.assertEqual(self.raw_cli(path, "--tag-prefix", "ac_", "-j", str(override))["ac_cue_in"], 0.)
 
     def test_cue_file_flag_controls_json_on_cached_and_analyzed_paths(self):
-        for prefix in ["liq_", "ac_"]:
+        for prefix in ["liq_", "ac_", "autocue_"]:
             for file_flag in [None, True, False]:
                 path = self.root / (prefix + str(file_flag) + "-json.flac")
                 shutil.copyfile(self.files["flac", prefix], path)
@@ -153,7 +218,7 @@ class TagPrefixTests(unittest.TestCase):
                 self.assertEqual(before, hashlib.sha256(path.read_bytes()).hexdigest())
 
     def test_true_flag_does_not_fill_missing_file_measurements_from_json(self):
-        for prefix in ["liq_", "ac_"]:
+        for prefix in ["liq_", "ac_", "autocue_"]:
             path = self.root / (prefix + "missing-json.flac")
             shutil.copyfile(self.files["flac", prefix], path)
             tags = FLAC(path)
@@ -168,7 +233,7 @@ class TagPrefixTests(unittest.TestCase):
             self.assertEqual(result, baseline)
 
     def test_json_cache_uses_selected_prefix_without_file_tags(self):
-        for prefix in ["liq_", "ac_"]:
+        for prefix in ["liq_", "ac_", "autocue_"]:
             data = self.tags(self.files["flac", prefix])
             override = self.root / "json-cache.json"
             override.write_text(json.dumps(data))
@@ -203,7 +268,7 @@ sys.exit(p.returncode)
         wrapper.chmod(0o755)
         cases = []
         files = []
-        for prefix in ["liq_", "ac_", "cue_file_", "radio.v1-", "liq_custom_"]:
+        for prefix in ["liq_", "ac_", "autocue_", "cue_file_", "radio.v1-", "liq_custom_"]:
             if ("flac", prefix) in self.files:
                 path = self.files["flac", prefix]
             else:
@@ -345,7 +410,7 @@ thread.run(delay=0.1,fun () -> shutdown())
         self.assertEqual(before, hashlib.sha256(path.read_bytes()).hexdigest())
 
     def test_other_prefixes(self):
-        for prefix in ["cue_file_", "radio.v1-", "liq_custom_"]:
+        for prefix in ["autocue_", "cue_file_", "radio.v1-", "liq_custom_"]:
             path = self.root / (prefix + ".flac")
             shutil.copyfile(self.root / "raw.flac", path)
             self.cli(path, "--tag-prefix", prefix, "-kwnrf")
@@ -364,7 +429,7 @@ thread.run(delay=0.1,fun () -> shutdown())
                            + shlex.quote(str(CUE_FILE)) + ' "$@"\n')
         wrapper.chmod(0o755)
         cases = []
-        for prefix in ["liq_", "ac_"]:
+        for prefix in ["liq_", "ac_", "autocue_"]:
             for file_flag in [None, True, False]:
                 path = self.root / (prefix + str(file_flag) + "-adapter-flag.flac")
                 shutil.copyfile(self.files["flac", prefix], path)
@@ -432,7 +497,7 @@ thread.run(delay=0.1,fun () -> shutdown())
         self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
         self.assertIn("FLAG_PRIORITY_TEST_PASSED", p.stdout)
         # Five combinations per prefix: twice direct, once via the resolver.
-        self.assertEqual(calls.read_text().splitlines(), ["call"] * 30)
+        self.assertEqual(calls.read_text().splitlines(), ["call"] * 45)
 
     @unittest.skipUnless(shutil.which("liquidsoap"), "Liquidsoap is not installed")
     def test_liquidsoap_tail_extension(self):
@@ -514,7 +579,7 @@ thread.run(delay=0.1, fun () -> shutdown())
         wrapper.chmod(0o755)
         cases = []
         file_cases = []
-        for prefix in ["liq_", "ac_"]:
+        for prefix in ["liq_", "ac_", "autocue_"]:
             normal = self.files["flac", prefix]
             calculated = self.cli(normal, "--tag-prefix", prefix)["liq_amplify"]
             explicit = self.root / (prefix + "gain.flac")

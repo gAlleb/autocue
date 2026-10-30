@@ -1,5 +1,13 @@
 # autocue changelog
 
+### Unreleased
+
+- Rename private working keys to `autocue_*` in Python and the Liquidsoap
+  adapter. Keep selected file/annotation/JSON names, native request controls
+  and the provider's typed return fields compatible.
+- Cover the external `autocue_` prefix, legacy flag/gain priorities and
+  namespace isolation in regression tests.
+
 ### 2026-10-30 — v5.0.1, maintained by Stefan (gAlleb)
 
 - Add `--ffmpeg`/`--ffprobe` and matching Liquidsoap settings, used for tag

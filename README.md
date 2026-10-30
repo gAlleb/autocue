@@ -337,8 +337,9 @@ The JSON response also uses `ac_*`. The integration translates these values
 into the typed autocue result (`cue_in`, `cue_out`, `start_next`, `amplify`,
 etc.); Liquidsoap then creates the native `liq_*` controls consumed by the
 transition and amplification operators. Informational extra metadata exported
-by this provider uses the selected prefix too. The private calculation keys
-do not form another external interface and do not control Liquidsoap.
+by this provider uses the selected prefix too. On `main` after 5.0.1, private
+calculation keys use `autocue_*`; they do not control Liquidsoap. The external
+prefix may also be `autocue_` without changing this boundary.
 
 Other prefixes are supported: letters, digits, underscores, dots and hyphens,
 starting with a letter or underscore. Prefixes are lowercased; a trailing
@@ -446,7 +447,7 @@ is unavailable rather than guessing.
 See [CHANGELOG.md](CHANGELOG.md) for release history and the dated source
 comments for implementation notes. Upstream credits and history are retained.
 
-The 24-test suite covers MP3/FLAC/M4A round-trips, namespaces, real request
+The 26-test suite covers MP3/FLAC/M4A round-trips, namespaces, real request
 resolution, JSON and gain priorities, fade-out boundaries, helper versions
 and tool paths. Legacy comparisons preserve JSON, tags and audio. An additional
 28 musical renders across both engines compared three transition pairs,
