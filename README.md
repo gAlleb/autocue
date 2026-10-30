@@ -17,7 +17,7 @@ upstream release. Start with this section for the changes in this branch.
 - [Existing libraries remain compatible](#existing-libraries-remain-compatible)
 - [Gain priority](#gain-priority)
 - [Analysis diagnostics](#analysis-diagnostics)
-- [Changes maintained by Stefan (gAlleb)](#changes-maintained-by-stefan-galleb)
+- [Changes maintained](#changes-maintained-by-stefan-galleb)
 
 ## Using this branch
 
