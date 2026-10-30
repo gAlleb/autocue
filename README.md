@@ -1,49 +1,29 @@
 # autocue 5.0.1
 
-This fork is maintained by **Stefan (gAlleb)**, based on
-the original autocue by **Matthias C. Hormann (Moonbase59)** and its contributors.
-Development continues on `main`; use the `v5.0.1` tag for this release.
-The `master` branch preserves the original upstream state, and `ls-2.5.0`
-retains the earlier maintained branch.
-The original README is preserved verbatim below under
-[Original upstream README](#original-upstream-readme). Its compatibility
-warnings, personal notes and installation instructions describe the original
-upstream release. Start with the sections below for the maintained version.
+Maintained by **Stefan (gAlleb)**, based on autocue by
+**Matthias C. Hormann (Moonbase59)** and its contributors.
+Use `v5.0.1` for this release; development continues on `main`.
+`master` preserves upstream; `ls-2.5.0` retains the earlier maintained branch.
+The [original README](#original-upstream-readme) is preserved below;
+its warnings and installation instructions describe the upstream release.
 
-## What's new in 5.0.1
+## Key features
 
-- **Configurable FFmpeg and FFprobe paths** in the CLI and Liquidsoap settings,
-  used consistently for reading, analysis and FFmpeg-based tag writing.
-- **Manual dependency diagnostics** via `cue_file --diagnose` and
-  `diagnose_cue_file()`, without automatic startup probes or provider changes.
-- **Repaired optional setup helper** with numeric major-version compatibility
-  and clear failure handling. Its call remains disabled by default.
-- **Updated crossfade documentation**, keeping metadata-delay `add`,
-  direct-delay `add` and `cross.simple` examples together.
+- **Liquidsoap 2.4.5 and 2.5 support**, with custom `add` and `cross.simple`
+  transition examples.
+- **Configurable tag prefix** across files, annotations, JSON and informational
+  metadata. Default `liq_` preserves existing libraries without re-tagging.
+- **Explicit gain and metadata priorities**, including `keep`/`override`/`ignore`
+  and the `<prefix>cue_file` preference flag.
+- **Optional bounded fade-out extension** for long endings, disabled by default.
+- **Configurable FFmpeg/FFprobe paths**, analysis-status logs and manual
+  dependency/version checks without automatic probes.
 
-Existing `liq_` libraries and default tool paths remain compatible; no
-re-tagging is required. Both maintained components report `5.0.1`.
-
-## Key changes introduced in 5.0.0
-
-- **Liquidsoap 2.5 support**, tested alongside 2.4.5, with updated JSON handling
-  and examples for custom crossfades and `cross.simple`.
-- **One configurable prefix** for file tags, request annotations, Python JSON
-  in both directions and informational metadata, e.g. `ac_`.
-- **Existing libraries remain compatible:** `liq_` is still the default;
-  existing tags need no migration or re-tagging.
-- **Correct gain priority and JSON preference:** explicit gain respects
-  `keep`/`override`/`ignore`, and `<prefix>cue_file=true` blocks stale JSON
-  measurements on cached and freshly analyzed paths.
-- **Clear analysis diagnostics** show when existing tags are reused and when
-  a full audio analysis runs.
-- **Optional fade-out extension** preserves eligible long endings with
-  configurable limits; it remains off by default.
+Release history: [CHANGELOG.md](CHANGELOG.md).
 
 ## Contents
 
-- [What's new in 5.0.1](#whats-new-in-501)
-- [Key changes introduced in 5.0.0](#key-changes-introduced-in-500)
+- [Key features](#key-features)
 - [Using this release](#using-this-release)
 - [FFmpeg paths and manual diagnostics](#ffmpeg-paths-and-manual-diagnostics)
 - [Applying the crossfade](#applying-the-crossfade)
@@ -60,38 +40,32 @@ re-tagging is required. Both maintained components report `5.0.1`.
 
 ## Using this release
 
-Install or update both components from the same release:
+Install both components from this release:
 
 - [`cue_file`](cue_file): the external Python analyzer and file tag reader/writer.
 - [`autocue.cue_file.liq`](autocue.cue_file.liq): the Liquidsoap integration.
 
-`cue_file --version` reports `5.0.1`. The optional `check_autocue_setup()`
-helper remains disabled in the maintained setup and example templates.
-The adapter initializes its settings when included and does not require a
-startup probe.
+`cue_file --version` reports `5.0.1`. Including the adapter initializes its
+settings without a startup probe. `check_autocue_setup()` remains disabled
+in configurations and examples.
 
-In `5.0.1`, the helper's version parser is repaired, following
-[Toots' PR #38](https://github.com/Moonbase59/autocue/pull/38). An explicit call
-accepts matching numeric major versions (for example, adapter 5.0.1 and CLI
-5.1.2). Different majors, missing or failed executables, and unreadable
-versions return `false`; `shutdown=true` requests exit code 2 on failure.
-The published `v5.0.0` tag retains the earlier checker limitation.
+The repaired helper follows [Toots' PR #38](https://github.com/Moonbase59/autocue/pull/38):
+explicit calls accept matching numeric major versions, e.g. 5.0.1 and 5.1.2.
+Different majors, unreadable versions and failed executables return `false`;
+`shutdown=true` exits with code 2 on failure. `v5.0.0` retains the old checker bug.
 
-Python 3 and FFmpeg with `ebur128` are required. Mutagen is recommended and is
-needed for writing some supported formats. This release has been tested on
-Liquidsoap **2.5.0+git@cb8ba5d** and **2.4.5** in Linux containers. For 2.5,
-use a build containing the upstream autocue/cross fixes
+Requires Python 3 and FFmpeg with `ebur128`; Mutagen is recommended and
+required to write some formats. Tested in Linux containers on Liquidsoap
+**2.5.0+git@cb8ba5d** and **2.4.5**. For 2.5, use a build with upstream fixes
 [#5587](https://github.com/savonet/liquidsoap/pull/5587) and
 [#5589](https://github.com/savonet/liquidsoap/pull/5589).
 
-The historical AzuraCast installation snippets below have not been validated
-for this release. Test the integration with the Liquidsoap version used by your
-installation before applying them.
+Historical AzuraCast installation snippets are unverified for this release;
+test them with your installation's Liquidsoap version.
 
 ## FFmpeg paths and manual diagnostics
 
-In `5.0.1`, both executable names can be configured. Defaults
-remain `ffmpeg` and `ffprobe`, resolved through `PATH`:
+Defaults are `ffmpeg` and `ffprobe` from `PATH`. To select other executables:
 
 ```liquidsoap
 settings.autocue.cue_file.ffmpeg := "/opt/ffmpeg/bin/ffmpeg"
@@ -105,26 +79,22 @@ cue_file --ffmpeg /opt/ffmpeg/bin/ffmpeg \
     --ffprobe /opt/ffmpeg/bin/ffprobe -kwnrf track.flac
 ```
 
-The selected FFprobe reads file tags and duration. The selected FFmpeg
-performs audio analysis and writes tags in formats using the FFmpeg writer;
-formats written through Mutagen continue to use Mutagen. Paths with spaces
-are supported; quote them in shell commands. A configured path is used as
-given, with no fallback to a different executable. Existing tagged files
-still skip analysis and do not need FFmpeg just to read their tags.
+FFprobe reads tags and duration; FFmpeg analyzes audio and handles FFmpeg-based
+tag writing. Mutagen writing is unchanged. Paths with spaces work when quoted
+in shell commands; configured paths have no fallback. Complete existing tags
+skip analysis and need only FFprobe.
 
-Dependency diagnostics are **manual only**. Including the adapter and
-processing a track do not run availability/version probes. To request one:
+Dependency diagnostics are **manual only**, never part of normal processing:
 
 ```sh
 cue_file --diagnose --ffmpeg /opt/ffmpeg/bin/ffmpeg \
     --ffprobe /opt/ffmpeg/bin/ffprobe
 ```
 
-This prints JSON with each configured path, version, success flag and error.
-It returns status 0 if both tools respond successfully to `-version`, or 1
-on failure; each tool has a five-second probe timeout. It needs no audio file
-and does not analyze or write one. It checks that the executables respond,
-not whether a particular codec or analysis filter is supported.
+The JSON report contains paths, versions, success flags and errors. Exit status
+is 0 if both tools respond successfully to `-version`, otherwise 1; each probe
+has a five-second timeout. No audio files are processed. Codec/filter support
+is not checked.
 
 To check the configured paths from Liquidsoap, explicitly call:
 
@@ -132,26 +102,20 @@ To check the configured paths from Liquidsoap, explicitly call:
 ignore(diagnose_cue_file(print=true))
 ```
 
-This also checks the CLI's major version against the adapter and returns a
-boolean without changing the preferred provider, gain policy or metadata
-priority. It is separate from `check_autocue_setup()`, whose successful
-explicit call applies provider settings. Both helpers remain uncalled in
-the maintained configuration and example templates. Default paths, `liq_`
-tags, JSON values and the tagging algorithm retain their previous behavior.
+This returns a boolean and also checks CLI major compatibility. Provider,
+gain and metadata-priority settings are unchanged; by comparison, a successful
+explicit `check_autocue_setup()` call applies provider settings.
 
 ## Applying the crossfade
 
-Enabling autocue prepares metadata; a transition operator still needs to apply
-the fades and overlap. The examples below assume `radio` is your existing
-source and this adapter has been included and selected. Choose one transition
-and apply `cross` once.
+autocue prepares metadata; a transition applies fades and overlap. With this
+adapter included and selected, choose one example for your existing `radio`
+source and apply `cross` once.
 
 ### Existing `add` transition with metadata delay
 
-This is the metadata-delay form used by the maintained radio stack, shown
-with explicit linear fades. It copies the ending track's next-entry delay
-into the incoming fade metadata, while preserving an explicit incoming
-`liq_fade_in_delay`:
+This linear transition copies the ending track's next-entry delay into incoming
+metadata, preserving an explicit incoming `liq_fade_in_delay`:
 
 ```liquidsoap
 def cue_file_transition(ending, starting) =
@@ -196,15 +160,11 @@ radio = cross(
 )
 ```
 
-When neither track provides a delay, the incoming metadata is passed through
-unchanged and the fade uses its default delay. This form remains a working
-choice; the next example expresses the same coordination with a direct
-argument.
+With no delay in either track, metadata passes through and the default applies.
 
 ### Custom transition with linear fades
 
-The same linear transition can use a direct `delay` argument instead of
-copying the delay into incoming metadata:
+The same transition using a direct `delay` argument:
 
 ```liquidsoap
 def cue_file_transition(ending, starting) =
@@ -235,11 +195,9 @@ radio = cross(
 )
 ```
 
-The ending track determines when the next track should enter. `cross` provides
-the adjusted `liq_fade_out_start_next`; the `delay` argument passes it to the
-incoming fade. An explicit `liq_fade_in_delay` in `starting.metadata` overrides
-that argument. A missing delay defaults to zero. The fade duration settings
-are also defaults: valid per-track fade metadata takes precedence.
+`cross` provides the adjusted `liq_fade_out_start_next` from the ending track.
+Explicit incoming `liq_fade_in_delay` overrides this argument; missing delay
+defaults to zero. Per-track fade durations override the configured defaults.
 
 ### Standard `cross.simple` transition
 
@@ -264,11 +222,9 @@ radio = cross(
 )
 ```
 
-In the tested versions, `cross.simple` selects sinusoidal fades by default.
-It also aligns the incoming buffer when it is shorter than the outgoing one.
-It is a working alternative, but its default fade shape differs from the
-linear custom transition above. To request linear fades, replace its two
-initial-metadata arguments with:
+`cross.simple` defaults to sinusoidal fades and aligns a shorter incoming
+buffer with the outgoing one. For linear fades, replace its two
+initial-metadata arguments:
 
 ```liquidsoap
 initial_fade_in_metadata=[
@@ -281,24 +237,17 @@ initial_fade_out_metadata=[
 ]
 ```
 
-This explicitly forces the two fade types. Global `settings.fade.*.type`
-alone does not change the sinusoidal defaults selected inside `cross.simple`.
-All three examples retain this project's external autocue provider.
+Global `settings.fade.*.type` alone does not change these defaults.
+All three examples use the external autocue provider.
 
-These transitions were compared by rendering synthetic tagged MP3 files and
-explicit transition cases on Liquidsoap 2.4.5 and 2.5.0+git@cb8ba5d with 20 ms
-frames. The five-file playlist was rendered in real time. Cases also included
-a five-second jingle, zero/short fade-outs, long fade-ins, delayed next-track
-entry and an explicit incoming delay. The direct-delay custom transition
-matched the existing metadata-copy version byte for byte. In those cases,
-`cross.simple` with linear fade metadata also matched the custom transition;
-its default sinusoidal version produced different samples during fades.
-This is a finite test set, not a guarantee for every buffer arrangement.
+On both tested engines with 20 ms frames, the two `add` forms and linear
+`cross.simple` produced identical PCM for the tested playlist, five-second
+jingle, zero/short fade-outs, long fade-ins and delayed entries. Default
+sinusoidal fades produced different samples. These finite tests do not cover
+every buffer arrangement.
 
-For AzuraCast, retain its separate transition-to-live branch and use the chosen
-transition for ordinary tracks. Replace the existing crossfade application;
-do not add another `cross` after it. Full live connection/disconnection behavior
-has not been tested by these standalone render comparisons.
+For AzuraCast, retain its transition-to-live branch; replace the ordinary-track
+transition without adding another `cross`. Full live behavior remains untested.
 
 ## Optional fade-out extension
 
@@ -494,55 +443,20 @@ is unavailable rather than guessing.
 
 ## Changes maintained by Stefan (gAlleb)
 
-- **2026-10-30 — 5.0.1:** added configurable FFmpeg/FFprobe paths for
-  reading, analysis and tag writing, plus explicit CLI/adapter dependency
-  diagnostics. Defaults remain unchanged and diagnostics are not automatic.
-- **2026-10-30 — 5.0.1:** repaired the optional setup helper, including
-  numeric major-version compatibility, failed CLI probes and executable paths
-  containing spaces. Its call remains disabled in configurations and examples.
-- **2026-10-30 — 5.0.0:** established `main` as the development branch and
-  versioned both maintained components as 5.0.0. Custom-prefix JSON follows
-  the selected namespace; the default `liq_` interface remains compatible.
-- **2026-09-16:** removed the forced `target_cross_duration` assignment and
-  updated nullable values to `null` in the Liquidsoap integration.
-- **2026-10-30:** updated JSON object creation for Liquidsoap 2.5; added
-  analysis diagnostics and configurable file tag prefixes, documentation and
-  automated tests. Legacy tag values and playback behavior are preserved.
-- **2026-10-30:** fixed duplicate gain export and preservation of explicit
-  file gain in `keep` mode; removed the fade-out warning for exact fits.
-- **2026-10-30:** documented the custom linear transition and `cross.simple`
-  alternative after comparing their rendered PCM on Liquidsoap 2.4.5 and 2.5.
-- **2026-10-30:** added optional fade-out extension with a configurable extra-tail
-  threshold and maximum eligible tail; the default remains disabled.
-- **2026-10-30:** fixed `liq_cue_file=true` JSON preference for cached tags and
-  fresh analysis, preserving normal tagging and the integration's `false` bypass.
-- **2026-10-30:** extended the selected prefix to request annotations, JSON in
-  both directions and informational extra metadata, keeping `liq_` as the
-  default. Preserved native request controls and gain policies.
+See [CHANGELOG.md](CHANGELOG.md) for release history and the dated source
+comments for implementation notes. Upstream credits and history are retained.
 
-Black-box tests cover file round-trips in MP3, FLAC and M4A/ALAC,
-legacy compatibility, mixed namespaces, request/JSON overrides and audio
-preservation, gain priority with conflicting file tags and annotations,
-fade-out extension boundaries and cue-point preservation, and JSON/file flag
-priority on cached and analyzed paths and through the Liquidsoap adapter.
-They also exercise five prefixes through the real request resolver, with
-JSON enabled and disabled, and inspect the actual JSON exchanged with Python.
-Tool-path tests exercise custom executable paths, all three file formats,
-missing tools and failed/timed-out manual probes, and ensure normal processing
-does not run diagnostic probes or silently use other executables.
-An additional 28 real-time renders on both engine versions compared three
-musical transition pairs with the previous code, default `liq_` and custom
-file tags. Piano transitions additionally covered a complete annotation/JSON
-cache on files without autocue tags and the optional fade-out extension.
-The compared PCM was byte-identical across namespaces and engine versions.
-Run them with FFmpeg, Mutagen and optionally Liquidsoap installed:
+The 24-test suite covers MP3/FLAC/M4A round-trips, namespaces, real request
+resolution, JSON and gain priorities, fade-out boundaries, helper versions
+and tool paths. Legacy comparisons preserve JSON, tags and audio. An additional
+28 musical renders across both engines compared three transition pairs,
+custom tags, annotation/JSON caching and optional extension; compared PCM
+matched byte for byte. Run the tests with FFmpeg, Mutagen and Liquidsoap
+installed (engine tests are skipped without Liquidsoap):
 
 ```sh
 python3 -m unittest discover -s tests -v
 ```
-
-See [CHANGELOG.md](CHANGELOG.md) and the dated source comments for details.
-The upstream author credits and history are retained.
 
 ---
 
