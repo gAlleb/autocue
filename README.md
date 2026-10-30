@@ -138,6 +138,7 @@ Here is a complete list you can copy, showing the default settings:
 
 ```
 # settings.autocue.cue_file.path := "cue_file"
+# settings.autocue.cue_file.tag_prefix := "liq_"  # legacy default; see custom prefixes below
 # settings.autocue.cue_file.fade_in := 0.1  # seconds
 # settings.autocue.cue_file.fade_out := 2.5  # seconds
 # settings.autocue.cue_file.timeout := 60.0  # seconds
@@ -264,6 +265,7 @@ Here is a **reference table** for settings and parameters in `cue_file` (the ext
 |--------|----------|-------|----|
 |`-h`, `--help`|—|—|show help|
 |`-V`, `--version`|—|—|show version|
+|`--tag-prefix`|`settings.autocue.cue_file.tag_prefix`|`liq_`|File tag namespace; use e.g. `ac_` for new libraries|
 |`-t`, `--target`|`settings.autocue.cue_file.target`|-18.0|LUFS|
 |`-s`, `--silence`|`settings.autocue.cue_file.silence`|-42.0|LU|
 |`-o`, `--overlay`|`settings.autocue.cue_file.overlay`|-8.0|LU|
@@ -291,6 +293,46 @@ Here is a **reference table** for settings and parameters in `cue_file` (the ext
 
 
 ## <a name="tags-and-metadata-reference"></a>Tags and metadata reference <a href="#toc" class="goToc">⇧</a>
+
+### Custom file tag prefixes
+
+For new libraries, use your own file tag namespace rather than Liquidsoap's
+reserved `liq_` names. For example:
+
+```sh
+cue_file --tag-prefix ac_ -kwnrf "/path/to/track.flac"
+```
+
+Configure the matching reader in Liquidsoap:
+
+```liquidsoap
+settings.autocue.cue_file.tag_prefix := "ac_"
+```
+
+This writes and reads `ac_cue_in`, `ac_cue_out`, `ac_cross_start_next`, etc.
+The prefix is lowercased and must start with a letter or underscore, followed
+by letters, digits, underscores, dots or hyphens. No trailing underscore is
+added automatically. ReplayGain/R128 tags keep their standard names.
+The JSON protocol, internal fields and Liquidsoap request annotations retain
+their canonical `liq_*` names; only file tag names change. Normal Liquidsoap
+annotation behavior, including annotations which disable autocue, is unchanged.
+
+Both components must support `--tag-prefix` to use a custom namespace.
+The default is still `liq_` for compatibility with existing libraries and
+tagging commands: no re-tagging or new mandatory tags are required. With the
+default prefix, the integration also works with older external `cue_file`
+versions because it does not send the new CLI option.
+
+When a custom namespace is selected, missing autocue fields are not filled
+from legacy `liq_*` tags. An incomplete selected set follows the existing
+analysis rules. `-w` writes only the selected namespace and preserves other
+tags; it does not migrate or delete old namespaces. Liquidsoap can still
+recognize legacy `liq_*` tags directly, so avoid storing conflicting legacy
+controls alongside custom tags in new libraries.
+
+`-f` in the example forces analysis. Omit it to reuse complete existing tags;
+omit `-w` to read without writing. Changing the prefix never enables writing
+on its own. Unknown tags with the chosen prefix are not treated as autocue data.
 
 ### <a name="categories"></a>Categories <a href="#toc" class="goToc">⇧</a>
 

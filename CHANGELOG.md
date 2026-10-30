@@ -1,5 +1,14 @@
 # autocue changelog
 
+### Unreleased
+
+- Add `--tag-prefix` and `settings.autocue.cue_file.tag_prefix` for custom
+  file tags. New libraries can use a namespace such as `ac_`; the legacy
+  `liq_` default, canonical JSON, and ReplayGain names remain compatible.
+- Normalize selected file tags before merging Liquidsoap request metadata;
+  do not fill incomplete custom sets from legacy `liq_*` measurements.
+- Add file round-trip and Liquidsoap integration tests for the tag prefix.
+
 ### 2024-08-05 - v4.1.1
 
 - Fix situation where supplied JSON data could still overwrite `cue_file` results even if a file’s `liq_cue_file` tag was set to `true`, meaning the `cue_file` results should be preferred in any case.

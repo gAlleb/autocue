@@ -10,6 +10,8 @@
 
 # Your special non-default settings go here
 # settings.autocue.cue_file.path := "cue_file"
+# For new files tagged with: cue_file --tag-prefix ac_ -kwnrf track.flac
+# settings.autocue.cue_file.tag_prefix := "ac_"
 # settings.autocue.cue_file.fade_in := 0.1
 # settings.autocue.cue_file.fade_out := 2.5
 # settings.autocue.cue_file.blankskip := 0.0
