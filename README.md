@@ -1,4 +1,10 @@
-# autocue 5.0.2
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/images/autocue-logo-white.png">
+    <source media="(prefers-color-scheme: light)" srcset="docs/images/autocue-logo-black.png">
+    <img src="docs/images/autocue-logo-black.png" alt="autocue" width="280">
+  </picture>
+</p>
 
 Maintained by **Stefan (gAlleb)**, based on autocue by
 **Matthias C. Hormann (Moonbase59)** and its contributors.
