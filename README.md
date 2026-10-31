@@ -8,7 +8,7 @@
 
 Maintained by **Stefan (gAlleb)**, based on autocue by
 **Matthias C. Hormann (Moonbase59)** and its contributors.
-Use `v5.0.2` for this release; development continues on `main`.
+Use `v5.0.3` for this release; development continues on `main`.
 `master` preserves upstream; `ls-2.5.0` retains the earlier maintained branch.
 The [original README](#original-upstream-readme) is preserved below;
 its warnings and installation instructions describe the upstream release.
@@ -24,6 +24,8 @@ its warnings and installation instructions describe the upstream release.
 - **Optional bounded fade-out extension** for long endings, disabled by default.
 - **Configurable FFmpeg/FFprobe paths**, analysis-status logs and manual
   dependency/version checks without automatic probes.
+- **Optional AzuraCast integration** with ready cue points, `cue_file`
+  fallback and asynchronous cache saving.
 
 Release history: [CHANGELOG.md](CHANGELOG.md).
 
@@ -42,7 +44,8 @@ Release history: [CHANGELOG.md](CHANGELOG.md).
 - [Gain priority](#gain-priority)
 - [The `liq_cue_file` preference flag](#the-liq_cue_file-preference-flag)
 - [Analysis diagnostics](#analysis-diagnostics)
-- [Changes maintained](#changes-maintained-by-stefan-galleb)
+- [AzuraCast integration](#azuracast-integration)
+- [Changes maintained](#changes-maintained)
 
 ## Using this release
 
@@ -51,7 +54,7 @@ Install both components from this release:
 - [`cue_file`](cue_file): the external Python analyzer and file tag reader/writer.
 - [`autocue.cue_file.liq`](autocue.cue_file.liq): the Liquidsoap integration.
 
-`cue_file --version` reports `5.0.2`. Including the adapter initializes its
+`cue_file --version` reports `5.0.3`. Including the adapter initializes its
 settings without a startup probe. `check_autocue_setup()` remains disabled
 in configurations and examples.
 
@@ -66,8 +69,8 @@ required to write some formats. Tested in Linux containers on Liquidsoap
 [#5587](https://github.com/savonet/liquidsoap/pull/5587) and
 [#5589](https://github.com/savonet/liquidsoap/pull/5589).
 
-Historical AzuraCast installation snippets are unverified for this release;
-test them with your installation's Liquidsoap version.
+For AzuraCast, use the maintained [integration guide](docs/azuracast.md)
+instead of the historical installation snippets below.
 
 ## FFmpeg paths and manual diagnostics
 
@@ -448,17 +451,61 @@ This diagnostic information is not written to audio file tags. Older CLI
 responses without it remain readable; the integration reports that the status
 is unavailable rather than guessing.
 
-## Changes maintained by Stefan (gAlleb)
+## AzuraCast integration
+
+[`autocue.azuracast.liq`](autocue.azuracast.liq) selects ready AzuraCast
+cue/fade annotations first, otherwise calling the ordinary `cue_file` provider.
+Successful fallback results are saved to AzuraCast's cache when a cache key
+is supplied; later plays can skip the CLI entirely.
+
+1. Upload `cue_file` and both `.liq` files together to a directory visible
+   inside the station container; make `cue_file` executable. The
+   [upload instructions](docs/azuracast.md#upload-the-files) include SCP and
+   explain host paths versus container paths.
+2. Keep **AutoCue enabled** in the UI and disable the built-in **crossfade**.
+3. Replace the old autocue include (if there's been any) in the custom field **before playlists**
+   (`custom_config_pre_playlists`, not `custom_config_top`):
+
+   ```liquidsoap
+   %include "/var/azuracast/stations/your_station/media/autocue/autocue.azuracast.liq"
+   settings.autocue.cue_file.path :=
+     "/var/azuracast/stations/your_station/media/autocue/cue_file"
+   settings.autocue.amplify_behavior := "keep"
+   ```
+
+   Replace `your_station`. The integration includes the ordinary provider;
+   do not include it twice or repeat `enable_autocue_metadata()`.
+4. Persistently comment out `radio = azuracast.apply_crossfade(radio)`;
+   **the UI switch alone is insufficient**. The guide shows a
+   [replacement using RM-FM's plugin](docs/azuracast.md#replace-the-generated-crossfade).
+5. Put the [live-aware `add` example](docs/azuracast.md#live-aware-add-transition)
+   in the field **before live broadcasting** (`custom_config_pre_live`). Its
+   `%ifversion` block applies delay coordination on 2.5 while preserving the
+   original 2.4.x branch. Use only one `cross`, save and restart the station.
+
+Ready card/cache values bypass `cue_file`. **Setting only `cue_in` in a media
+card still selects a complete AzuraCast bundle**: it supplies the remaining
+defaults, including zero fades when crossfade is disabled. Cache lifetime and
+priority relative to card values vary by AzuraCast version; station restarts
+do not clear the cache. The informational `<prefix>cue_duration` is recomputed
+from final cue points on both paths; full-file `duration` is unchanged.
+
+See the [detailed guide](docs/azuracast.md) for gain handling, cache checks,
+legacy-map removal and version limits. Outside AzuraCast, continue to include
+only `autocue.cue_file.liq`.
+
+## Changes maintained
 
 See [CHANGELOG.md](CHANGELOG.md) for release history and the dated source
 comments for implementation notes. Upstream credits and history are retained.
 
-The 26-test suite covers MP3/FLAC/M4A round-trips, namespaces, real request
+The 26-test core suite covers MP3/FLAC/M4A round-trips, namespaces, real request
 resolution, JSON and gain priorities, fade-out boundaries, helper versions
 and tool paths. Legacy comparisons preserve JSON, tags and audio. An additional
 28 musical renders across both engines compared three transition pairs,
 custom tags, annotation/JSON caching and optional extension; compared PCM
-matched byte for byte. Run the tests with FFmpeg, Mutagen and Liquidsoap
+matched byte for byte. AzuraCast adds 29 provider/cache tests and four
+executable documentation tests, checked on both engines. Run the tests with FFmpeg, Mutagen and Liquidsoap
 installed (engine tests are skipped without Liquidsoap):
 
 ```sh

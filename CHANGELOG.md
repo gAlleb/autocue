@@ -1,5 +1,29 @@
 # autocue changelog
 
+### 2026-10-31 — v5.0.3, maintained by Stefan (gAlleb)
+
+- Add optional `autocue.azuracast.liq`: use ready AzuraCast cue/fade data
+  from media cards or cache, otherwise fall back to the ordinary `cue_file`
+  provider. Keep the standalone provider's processing behavior unchanged.
+- Save successful fallback results asynchronously through AzuraCast's
+  `savecache` API. Preserve playback on API failures and skip repeat CLI
+  calls when cached data is returned. Normalize cached gain to dB and
+  preserve the existing gain policies.
+- Derive informational `<prefix>cue_duration` from final cue points for
+  ready data as well as fallback results, without changing full-file duration
+  or the cue/fade controls.
+- Add a concise README setup section and a detailed AzuraCast guide covering
+  uploads, custom configuration fields, persistent crossfade replacement,
+  cache behavior and version-specific limitations.
+- Include a live-aware `add` example with `%ifversion`: transfer the
+  incoming fade delay on Liquidsoap 2.5+, keeping the original 2.4.x path.
+- Validate with 29 integration tests and four executable documentation
+  tests on each of Liquidsoap 2.4.5 and 2.5. Check real playback/cache on
+  AzuraCast rolling build `53e517d` with Liquidsoap 2.4.6; full live-DJ
+  connect/disconnect behavior remains outside this validation.
+- Keep `liq_` as the default prefix and existing file tags compatible.
+  No re-tagging is required; both maintained components report 5.0.3.
+
 ### 2026-10-30 — v5.0.2, maintained by Stefan (gAlleb)
 
 - Rename private working keys to `autocue_*` in Python and the Liquidsoap

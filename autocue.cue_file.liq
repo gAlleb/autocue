@@ -1,4 +1,5 @@
 # autocue.cue_file.liq
+# 2026-10-31 - Stefan (gAlleb): Release 5.0.3 alongside optional AzuraCast integration.
 # 2026-10-30 - Stefan (gAlleb): Release 5.0.2 with private autocue_* working keys.
 # 2026-10-30 - Stefan (gAlleb): Use autocue_* for internal working keys.
 # Maintained by Stefan (gAlleb); tested with Liquidsoap 2.4.5 and 2.5.
@@ -80,7 +81,7 @@ let settings.autocue.cue_file.version =
   settings.make(
     description=
       "Software version of autocue.cue_file. Should coincide with `cue_file`.",
-    "5.0.2"
+    "5.0.3"
   )
 
 # Internal only! Not a user setting.
