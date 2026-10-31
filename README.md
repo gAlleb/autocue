@@ -13,6 +13,10 @@ Use `v5.0.3` for this release; development continues on `main`.
 The [original README](#original-upstream-readme) is preserved below;
 its warnings and installation instructions describe the upstream release.
 
+**Unreleased updates:** see the [changelog](CHANGELOG.md#unreleased).
+To get them before the next release, download or pull the latest
+[`main`](https://github.com/gAlleb/autocue/tree/main) instead of a release tag.
+
 ## Key features
 
 - **Liquidsoap 2.4.5 and 2.5 support**, with custom `add` and `cross.simple`

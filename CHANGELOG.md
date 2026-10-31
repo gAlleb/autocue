@@ -1,5 +1,18 @@
 # autocue changelog
 
+## Unreleased
+
+- Add optional `settings.autocue.cue_file.minimum_fade_out` for abrupt endings.
+  When the available tail is shorter than the minimum, move `start_next` earlier
+  and preserve `cue_out`. Disabled by default (`0.0`); respects the requested
+  fade-out, including an explicit zero, and avoids fading the entire cue interval.
+- Cover the minimum fade-out with 45 scenarios on each of Liquidsoap 2.4.5
+  and 2.5. Musical comparisons preserve the previous PCM with the option off
+  and produce matching PCM across both versions.
+- Make both README `add` transition examples version-aware with `%ifversion`:
+  apply the incoming-delay workaround on Liquidsoap 2.5+, preserving the
+  original path on 2.4.x.
+
 ### 2026-10-31 — v5.0.3, maintained by Stefan (gAlleb)
 
 - Add optional `autocue.azuracast.liq`: use ready AzuraCast cue/fade data
