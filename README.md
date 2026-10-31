@@ -21,7 +21,7 @@ its warnings and installation instructions describe the upstream release.
   metadata. Default `liq_` preserves existing libraries without re-tagging.
 - **Explicit gain and metadata priorities**, including `keep`/`override`/`ignore`
   and the `<prefix>cue_file` preference flag.
-- **Optional bounded fade-out extension** for long endings, disabled by default.
+- **Optional fade-out policies** for abrupt endings and long tails, disabled by default.
 - **Configurable FFmpeg/FFprobe paths**, analysis-status logs and manual
   dependency/version checks without automatic probes.
 - **Optional AzuraCast integration** with ready cue points, `cue_file`
@@ -38,6 +38,7 @@ Release history: [CHANGELOG.md](CHANGELOG.md).
   - [Existing `add` transition with metadata delay](#existing-add-transition-with-metadata-delay)
   - [Custom transition with linear fades](#custom-transition-with-linear-fades)
   - [Standard `cross.simple` transition](#standard-crosssimple-transition)
+- [Optional minimum fade-out](#optional-minimum-fade-out)
 - [Optional fade-out extension](#optional-fade-out-extension)
 - [Custom tags, annotations and JSON](#custom-tags-annotations-and-json)
 - [Existing libraries remain compatible](#existing-libraries-remain-compatible)
@@ -269,6 +270,32 @@ every buffer arrangement.
 For AzuraCast, retain its transition-to-live branch; replace the ordinary-track
 transition without adding another `cross`. Full live behavior remains untested.
 
+## Optional minimum fade-out
+
+An abrupt ending can produce `start_next = cue_out`, leaving no fade-out.
+To soften these transitions, set this **after** including the provider:
+
+```liquidsoap
+settings.autocue.cue_file.minimum_fade_out := 1.1
+```
+
+The default is **0.0 (disabled)**. When the available tail is shorter than
+this minimum, the provider moves `start_next` earlier and fades over that
+interval, preserving `cue_out`. For example, `start_next=246.1` and
+`cue_out=246.1` become `start_next=245.0`, `fade_out=1.1`.
+
+The minimum must be finite and non-negative. It is capped by the requested
+fade-out: an explicit 0.2-second fade stays at most 0.2 seconds, and an
+explicit zero fade remains zero. A cue interval too short to fit the entire
+minimum while leaving audio before it is unchanged. Longer existing tails
+follow the usual rules, including the independent extension option below.
+
+This deliberately fades into material that the analyzer would otherwise
+preserve at full level. Compare musical transitions before enabling it.
+It works with existing tags and custom prefixes, without re-tagging; Python
+analysis and stored file tags are unchanged. In the AzuraCast integration,
+it affects our cue_file fallback, not the ready manual/cache provider path.
+
 ## Optional fade-out extension
 
 By default, when `start_next` leaves more time before `cue_out` than the
@@ -297,8 +324,8 @@ still enters at the same `start_next=95`.
 
 A tail exceeding the maximum uses the original shortening rule; the adapter
 does not introduce a delayed fade or move `start_next` to fit the maximum.
-A tail below the extension threshold also uses the original rule. Short tails
-still shorten the fade-out as before, and an explicit zero fade-out remains
+A tail below the extension threshold also uses the original rule. With the
+minimum fade-out disabled, short tails shorten the fade-out as before. An explicit zero fade-out remains
 zero. When enabled, this policy can extend a positive per-track fade-out as
 well as the configured default. It applies equally to legacy and custom file
 tag prefixes and requires no re-tagging. The Python analyzer is unchanged.
