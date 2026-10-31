@@ -123,11 +123,13 @@ source and apply `cross` once.
 
 ### Existing `add` transition with metadata delay
 
-This linear transition copies the ending track's next-entry delay into incoming
-metadata, preserving an explicit incoming `liq_fade_in_delay`:
+This linear transition works on Liquidsoap 2.4.x and 2.5. On 2.5+, it copies
+the ending track's next-entry delay into incoming metadata, preserving an
+explicit incoming `liq_fade_in_delay`. On 2.4.x, it keeps the incoming metadata:
 
 ```liquidsoap
 def cue_file_transition(ending, starting) =
+%ifversion >= 2.5.0
     fade_in_delay = starting.metadata["liq_fade_in_delay"]
     fade_in_delay =
         if fade_in_delay == "" then
@@ -145,6 +147,9 @@ def cue_file_transition(ending, starting) =
                 ("liq_fade_in_delay", fade_in_delay)
             ]
         end
+%else
+    fade_in_metadata = starting.metadata
+%endif
 
     add(normalize=false, [
         fade.in(
@@ -173,17 +178,23 @@ With no delay in either track, metadata passes through and the default applies.
 
 ### Custom transition with linear fades
 
-The same transition using a direct `delay` argument:
+The same transition, using a direct `delay` argument on 2.5+ and the original
+fade behavior on 2.4.x:
 
 ```liquidsoap
 def cue_file_transition(ending, starting) =
+%ifversion >= 2.5.0
+    fade_in_delay = float_of_string(
+        default=0.0,
+        ending.metadata["liq_fade_out_start_next"]
+    )
+%else
+    fade_in_delay = 0.0
+%endif
     add(normalize=false, [
         fade.in(
             type="lin",
-            delay=float_of_string(
-                default=0.0,
-                ending.metadata["liq_fade_out_start_next"]
-            ),
+            delay=fade_in_delay,
             initial_metadata=starting.metadata,
             duration=settings.autocue.cue_file.fade_in(),
             starting.source
@@ -204,7 +215,7 @@ radio = cross(
 )
 ```
 
-`cross` provides the adjusted `liq_fade_out_start_next` from the ending track.
+On 2.5+, `cross` provides the adjusted `liq_fade_out_start_next` from the ending track.
 Explicit incoming `liq_fade_in_delay` overrides this argument; missing delay
 defaults to zero. Per-track fade durations override the configured defaults.
 
