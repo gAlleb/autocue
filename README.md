@@ -8,7 +8,7 @@
 
 Maintained by **Stefan (gAlleb)**, based on autocue by
 **Matthias C. Hormann (Moonbase59)** and its contributors.
-Use `v5.0.3` for this release; development continues on `main`.
+Use `v5.0.4` for this release; development continues on `main`.
 `master` preserves upstream; `ls-2.5.0` retains the earlier maintained branch.
 The [original README](#original-upstream-readme) is preserved below;
 its warnings and installation instructions describe the upstream release.
@@ -19,7 +19,7 @@ To get them before the next release, download or pull the latest
 
 ## Key features
 
-- **Liquidsoap 2.4.5 and 2.5 support**, with custom `add` and `cross.simple`
+- **Liquidsoap 2.4.5, 2.4.6 and 2.5 support**, with custom `add` and `cross.simple`
   transition examples.
 - **Configurable tag prefix** across files, annotations, JSON and informational
   metadata. Default `liq_` preserves existing libraries without re-tagging.
@@ -59,7 +59,7 @@ Install both components from this release:
 - [`cue_file`](cue_file): the external Python analyzer and file tag reader/writer.
 - [`autocue.cue_file.liq`](autocue.cue_file.liq): the Liquidsoap integration.
 
-`cue_file --version` reports `5.0.3`. Including the adapter initializes its
+`cue_file --version` reports `5.0.4`. Including the adapter initializes its
 settings without a startup probe. `check_autocue_setup()` remains disabled
 in configurations and examples.
 
@@ -70,7 +70,7 @@ Different majors, unreadable versions and failed executables return `false`;
 
 Requires Python 3 and FFmpeg with `ebur128`; Mutagen is recommended and
 required to write some formats. Tested in Linux containers on Liquidsoap
-**2.5.0+git@cb8ba5d** and **2.4.5**. For 2.5, use a build with upstream fixes
+**2.5.0+git@cb8ba5d**, **2.4.6** and **2.4.5**. For 2.5, use a build with upstream fixes
 [#5587](https://github.com/savonet/liquidsoap/pull/5587) and
 [#5589](https://github.com/savonet/liquidsoap/pull/5589).
 

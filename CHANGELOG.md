@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+No unreleased changes.
+
+### 2026-11-01 — v5.0.4, maintained by Stefan (gAlleb)
+
 - Add optional `settings.autocue.cue_file.minimum_fade_out` for abrupt endings.
   When the available tail is shorter than the minimum, move `start_next` earlier
   and preserve `cue_out`. Disabled by default (`0.0`); respects the requested
@@ -12,6 +16,12 @@
 - Make both README `add` transition examples version-aware with `%ifversion`:
   apply the incoming-delay workaround on Liquidsoap 2.5+, preserving the
   original path on 2.4.x.
+- Confirm Liquidsoap 2.4.6 compatibility: all 61 tests passed across the full
+  run and a corrected HTTP-fixture rerun. Twelve musical renders of two
+  transition pairs produced identical PCM across 2.4.5, 2.4.6 and 2.5,
+  with the minimum fade-out both disabled and enabled.
+- Keep existing file tags and default transition behavior compatible.
+  No re-tagging is required; both maintained components report 5.0.4.
 
 ### 2026-10-31 — v5.0.3, maintained by Stefan (gAlleb)
 

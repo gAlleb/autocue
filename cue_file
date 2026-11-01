@@ -2,10 +2,11 @@
 # encoding: utf-8
 
 # cue_file
+# 2026-11-01 Stefan (gAlleb) - Release 5.0.4 alongside optional minimum fade-out.
 # 2026-10-31 Stefan (gAlleb) - Release 5.0.3 alongside optional AzuraCast integration.
 # 2026-10-30 Stefan (gAlleb) - Release 5.0.2 with private autocue_* working keys.
 # 2026-10-30 Stefan (gAlleb) - Use autocue_* for internal working keys.
-# Maintained by Stefan (gAlleb); tested with Liquidsoap 2.4.5 and 2.5.
+# Maintained by Stefan (gAlleb); tested with Liquidsoap 2.4.5, 2.4.6 and 2.5.
 # 2026-10-30 Stefan (gAlleb) - Release 5.0.1 with tool paths and optional helper fixes.
 # 2026-10-30 Stefan (gAlleb) - Configure FFmpeg/FFprobe and add manual diagnostics.
 # 2026-10-30 Stefan (gAlleb) - Release 5.0.0 from the maintained main branch.
@@ -92,7 +93,7 @@
 
 __author__ = 'Matthias C. Hormann; Stefan (gAlleb)'
 __maintainer__ = 'Stefan (gAlleb)'
-__version__ = '5.0.3'
+__version__ = '5.0.4'
 
 import os
 import sys
